@@ -28,7 +28,7 @@
 
 #include "BgsubTrack.hpp"
 
-#define VIZ 1
+//#define VIZ 1
 
 using namespace std;
 using namespace cv;
@@ -545,6 +545,7 @@ int main( int argc, char** argv )
     }
 
     int nbFrame = 0;
+    Mat currentFrame, previousFrame;
     // iterates until the last frame of the video
     while(1)
     {
@@ -555,20 +556,29 @@ int main( int argc, char** argv )
             break;
         }
 
-        //Applies background subtraction for the current frame and update weights of each pixel
-        bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
+        currentFrame = frame.clone();
 
-        Mat thresholded;
+        //Applies background subtraction for the current frame and update weights of each pixel
+        //bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
+        Mat diff_mask;
+        if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
+        {
+            absdiff(previousFrame, currentFrame, diff_mask);
+            cvtColor(diff_mask, diff_mask, COLOR_BGR2GRAY);
+            threshold(diff_mask, diff_mask, 30, 255, CV_THRESH_BINARY);
+        }
+
+        //Mat thresholded;
         vector<vector<Point> > contours;
         vector<cv::Vec4i> hierarchy;
 
         // binarizes image to extract contours
-        Mat opened;
-        threshold(fgmask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
+        //Mat opened;
+        //threshold(fgmask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
         //Applies opening on the binarized image to remove small artefacts and to try to split regions that should not be linked (shadows etc)
-        morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
-        findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
-
+        //morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
+        //findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+        findContours(diff_mask, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 
         Mat contoursImg = Mat::zeros(frame.size(), CV_8UC1);
         vector<RotatedRect> rectangles;
@@ -664,120 +674,7 @@ int main( int argc, char** argv )
             rectangle(trackingResult, trackerList[i].bbox, Scalar(0, 0, 255));
         }
 
-//=================
-// Kalman tracking |
-//=================
-/*        // if the tracker list is empty we add the detection in which we have the highest confidence
-        if(trackerList.size() == 0 && posDetections.size() != 0)
-            trackerList.push_back(bst.initFilter(posDetections[0].boundingBox, nbFrame));
-
-        // creates new trackers for each detection that overlaps none of the tracked region
-        // and sets the "found" attribute of each tracker to true if overlapping was found.
-        bst.nms(posDetections, &trackerList, nbFrame);
-
-        //updates the notFoundCount of each tracker
-        bst.updateNonFound(posDetections, &trackerList);
-
-        Mat res = frame.clone();
-        for(int i=0; i < trackerList.size(); i++)
-        {
-
-
-            trackerList[i].state = trackerList[i].kf.predict();
-            //cout << "State post tracker 0: " << endl << trackerList[i].state << endl;
-
-            Rect predRect;
-            predRect.width = trackerList[i].state.at<float>(8);
-            predRect.height = trackerList[i].state.at<float>(9);
-            predRect.x = trackerList[i].state.at<float>(0) - predRect.width/2;
-            predRect.y = trackerList[i].state.at<float>(1) - predRect.height/2;
-            Point center;
-            center.x = trackerList[i].state.at<float>(0);
-            center.y = trackerList[i].state.at<float>(1);
-
-            // displays the prediction result in red
-            circle(res, center, 2, CV_RGB(255,0,0), -1);
-            rectangle(res, predRect, CV_RGB(255, 0, 0), 2);
-
-            if(trackerList[i].found)
-            {
-                //displays the detection result in green
-                rectangle(res, trackerList[i].bbox, CV_RGB(0, 255, 0), 2);
-                Point center;
-                center.x = trackerList[i].bbox.x + trackerList[i].bbox.width/2;
-                center.y = trackerList[i].bbox.y + trackerList[i].bbox.height/2;
-                circle(res, center, 2, CV_RGB(20, 150, 20), -1);
-
-                trackerList[i].kf.correct(trackerList[i].meas);
-                //cout << "Measure matrix : " << endl << trackerList[i].meas << endl;
-            }
-
-        }
-        imshow("tracker", res);
-        waitKey(30);
-
-*/
-//===================
-//  Old KCF trackers |
-//===================
-
-        //updates all trackers and stores all bounding boxes
-/*        vector<Rect2d> bbVect;
-        for(int j = trackerList.size() -1 ; j >= 0; j--)
-        {
-            Rect2d bb;
-            trackerList[j]->update(frame, bb);
-
-            if(bb.x + bb.width > frame.cols -10 || bb.y + bb.height > frame.rows -10 || bb.x < 10 || bb.y < 10)
-            {
-                //removes trackers that have lost their target == out of the image (tracker update() method does not return whether the object is lost)
-                trackerList.erase(trackerList.begin()+j);
-                trackedRegions.erase(trackedRegions.begin()+j);
-                continue;
-            }
-            bbVect.push_back(bb);
-            if(int(trackedRegions.size())-1 >= j)
-                trackedRegions[j].push_back(bb);
-            else
-            {
-                vector<Rect2d> v;
-                v.push_back(bb);
-                trackedRegions.push_back(v);
-            }
-#ifdef VIZ
-            Mat clone = frame.clone();
-            rectangle(clone, bb, Scalar(0,0,255));
-            imshow("tracker" + to_string(j), clone);
-#endif
-        }
-
-        //look for trackers that have lost their target in the middle of image
-        for(int i=trackedRegions.size()-1; i >= 0; i--)
-        {
-            int x_start = trackedRegions[i][trackedRegions[i].size()-1].x;
-            int y_start = trackedRegions[i][trackedRegions[i].size()-1].y;
-            int noMvt = 0;
-            for(int j=0; j < trackedRegions[i].size()-1; j++)
-            {
-                if(trackedRegions[i][j].x == x_start && trackedRegions[i][j].y == y_start)
-                    noMvt++;
-            }
-            //if the tracked region has not move for more than 200 frames we consider that the tracker has lost its target
-            if(noMvt >= 200)
-            {
-                trackerList.erase(trackerList.begin() + i);
-                trackedRegions.erase(trackedRegions.begin() +i);
-                bbVect.erase(bbVect.begin() +i);
-            }
-        }
-
-        // applies Non Maxima Suppression and initializes new trackers for non tracked areas
-        nms(posDetections, &bbVect, &trackerList, frame);
-
-        //Result ouput trackers (CSV format)
-        for(int i=0; i < trackerList.size(); i++)
-            cout << nbFrame << ", 1, " << bbVect[i].x << ", " << bbVect[i].y << ", " << bbVect[i].width << ", " << bbVect[i].height << endl;
-*/
+        previousFrame = currentFrame.clone();
 #ifdef VIZ
         //imshow("original frame", frame);
         //imshow("opened", opened);

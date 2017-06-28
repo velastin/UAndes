@@ -28,7 +28,7 @@
 
 #include "BgsubTrack.hpp"
 
-//#define VIZ 1
+#define VIZ 1
 
 using namespace std;
 using namespace cv;
@@ -140,7 +140,7 @@ void BgsubTrack::roiSelection(const vector<RotatedRect> & rectangles, vector<Mat
     for(int i=0; i < (int)rectangles.size(); i++)
     {
         Rect bRect = rectangles[i].boundingRect();
-        if((bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)//(bRect.size().width * bRect.size().height > 3000))////(bRect.size().width * bRect.size().height > 3000))//(bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)// > 3000 BOSS dataset
+        if((bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)
         {
             // skips bounding boxes that are out of the image bounds
             if(bRect.x < 40 || bRect.y < 40 || bRect.x > frame.cols - bRect.width -40|| bRect.y > frame.rows - bRect.height -40)
@@ -302,9 +302,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
 {
     for(int i=trackerList->size() -1; i >= 0; i--)
     {
-        //cout << "TRACKER" << to_string(i) << endl;
-        //cout << "noMeasure count = " << (*trackerList)[i].noMeasureCount << endl;
-
         // get the area of already tracked region
         int x1_tl = (*trackerList)[i].bbox.x;
         int y1_tl = (*trackerList)[i].bbox.y;
@@ -331,37 +328,11 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
             // Note : increase the jaccard coefficient threshold increases the accuracy of each tracker but can cause the deletion of "young" good tracks
             if(overlap_area / (float) total_area > 0.5) // BOSS : 0.5 / subway : 0.1 - 0.2
             {
-                //cout << "overlapping found" << endl;
-                //imshow("measure", frame(posDetections[j].boundingBox));
-
-                /*Mat b_hist, g_hist, r_hist;
-                //calculates the distance between tracker and detection color histograms
-                double distance = this->getHistDistance(frame(posDetections[j].boundingBox).clone(), &b_hist, &g_hist, &r_hist, (*trackerList)[i].histogram);
-
-                // gets the mean distance between color histogram for the tracked person i
-                double mean_distance=0;
-                for(int k=0; k < (*trackerList)[i].distances.size(); k++)
-                    mean_distance += (*trackerList)[i].distances[k];
-
-                if((*trackerList)[i].distances.size() >=1)
-                    mean_distance = mean_distance / (*trackerList)[i].distances.size();
-
-                if(distance == 0 || ((*trackerList)[i].distances.size() >= 1 && (*trackerList)[i].distances[(*trackerList)[i].distances.size()-1] == 0 ) ||
-                   distance <= 1.5*mean_distance || ((*trackerList)[i].distances.size() == 0))
-                {*/
-                    //cout << "updated from measure " << endl;
-                    //(*trackerList)[i].distances.push_back(distance);
-                    //(*trackerList)[i].histogram.clear();
-                    //(*trackerList)[i].histogram.push_back(b_hist);
-                    //(*trackerList)[i].histogram.push_back(g_hist);
-                    //(*trackerList)[i].histogram.push_back(r_hist);
-                    //(*trackerList)[i].bbox = posDetections[j].boundingBox;
-                    (*trackerList)[i].locations.push_back((*trackerList)[i].bbox);
-                    (*trackerList)[i].numFrame.push_back(nframe);
-                    (*trackerList)[i].noMeasureCount = 0;
-                    flag = true;
-                    break;
-                //}
+            	(*trackerList)[i].locations.push_back((*trackerList)[i].bbox);
+            	(*trackerList)[i].numFrame.push_back(nframe);
+            	(*trackerList)[i].noMeasureCount = 0;
+            	flag = true;
+            	break;
             }
         }
         // if no overlapping with detections has been found this can be due to missing detection or new person. Here we try to recover from target loss
@@ -431,7 +402,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
                     }
                 }
                 sort(redetections.begin(), redetections.end(), less_than_confidence());
-                //Mat b_hist, g_hist, r_hist;
 
                 bool flagNoRedetect = false;
                 if(redetections.size() > 0)
@@ -443,33 +413,13 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
                     if(redetections[0].boundingBox.y + redetections[0].boundingBox.height > frame.rows)
                         redetections[0].boundingBox.height = frame.rows - redetections[0].boundingBox.y;
 
-                    /*double distance = getHistDistance(frame(redetections[0].boundingBox).clone(), &b_hist, &g_hist, &r_hist, (*trackerList)[i].histogram);
-                    double mean_distance=0;
-                    for(int m=0; m < (*trackerList)[i].distances.size(); m++)
-                        mean_distance += (*trackerList)[i].distances[m];
-
-                    if((*trackerList)[i].distances.size() >=1)
-                        mean_distance = mean_distance / (*trackerList)[i].distances.size();
-
-                    if(distance == 0 || (*trackerList)[i].distances[(*trackerList)[i].distances.size()-1] == 0 ||
-                       distance <= 1.5*mean_distance)
-                    {*/
-                        //cout << "update from redetection " << endl;
-                        //imshow("redetection", frame(redetections[0].boundingBox).clone());
-
-                        //(*trackerList)[i].distances.push_back(distance);
-                        //(*trackerList)[i].histogram.clear();
-                        //(*trackerList)[i].histogram.push_back(b_hist);
-                        //(*trackerList)[i].histogram.push_back(g_hist);
-                        //(*trackerList)[i].histogram.push_back(r_hist);
-                        (*trackerList)[i].bbox = redetections[0].boundingBox;
-                        // reinitialize the tracker with the redetected target. Assuming we did not consider another target
-                        (*trackerList)[i].tracker->init(frame, redetections[0].boundingBox);
-                        (*trackerList)[i].locations.push_back(redetections[0].boundingBox);
-                        (*trackerList)[i].numFrame.push_back(nframe);
-                        (*trackerList)[i].noMeasureCount = 0;
-                        flag = true;
-                    //}
+                    (*trackerList)[i].bbox = redetections[0].boundingBox;
+                    // reinitialize the tracker with the redetected target. Assuming we did not consider another target
+                    (*trackerList)[i].tracker->init(frame, redetections[0].boundingBox);
+                    (*trackerList)[i].locations.push_back(redetections[0].boundingBox);
+                    (*trackerList)[i].numFrame.push_back(nframe);
+                    (*trackerList)[i].noMeasureCount = 0;
+                    flag = true;
                 }
                 else
                 {
@@ -567,6 +517,7 @@ int main( int argc, char** argv )
         exit(-1);
     }
 
+    Mat currentFrame, previousFrame;
     int nbFrame = 0;
     // iterates until the last frame of the video
     while(1)
@@ -577,21 +528,29 @@ int main( int argc, char** argv )
             //cout << "Cannot read next frame " << endl;
             break;
         }
+        currentFrame = frame.clone();
 
         //Applies background subtraction for the current frame and update weights of each pixel
-        bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
+        //bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
+        Mat diff_mask;
+        if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
+        {
+            absdiff(previousFrame, currentFrame, diff_mask);
+            cvtColor(diff_mask, diff_mask, COLOR_BGR2GRAY);
+            threshold(diff_mask, diff_mask, 30, 255, CV_THRESH_BINARY);
+        }
 
-        Mat thresholded;
+        //Mat thresholded;
         vector<vector<Point> > contours;
         vector<cv::Vec4i> hierarchy;
 
         // binarizes image to extract contours
-        Mat opened;
-        threshold(fgmask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
+        //Mat opened;
+        //threshold(fgmask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
         //Applies opening on the binarized image to remove small artefacts and to try to split regions that should not be linked (shadows etc)
-        morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
-        findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
-
+        //morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
+        //findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+        findContours(diff_mask, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 
         Mat contoursImg = Mat::zeros(frame.size(), CV_8UC1);
         vector<RotatedRect> rectangles;
@@ -686,8 +645,6 @@ int main( int argc, char** argv )
                 trackerList[i].bbox = bbox;
         }
 
-
-        //cout << "frame n°" << nbFrame << endl;
         bst.updateTrackers(posDetections, &trackerList, frame, nbFrame, svm, & significantTrackers);
         bst.addNewTrackers(posDetections, &trackerList, frame, nbFrame);
 
@@ -697,120 +654,7 @@ int main( int argc, char** argv )
             rectangle(trackingResult, trackerList[i].bbox, Scalar(0, 0, 255));
         }
 
-//=================
-// Kalman tracking |
-//=================
-/*        // if the tracker list is empty we add the detection in which we have the highest confidence
-        if(trackerList.size() == 0 && posDetections.size() != 0)
-            trackerList.push_back(bst.initFilter(posDetections[0].boundingBox, nbFrame));
-
-        // creates new trackers for each detection that overlaps none of the tracked region
-        // and sets the "found" attribute of each tracker to true if overlapping was found.
-        bst.nms(posDetections, &trackerList, nbFrame);
-
-        //updates the notFoundCount of each tracker
-        bst.updateNonFound(posDetections, &trackerList);
-
-        Mat res = frame.clone();
-        for(int i=0; i < trackerList.size(); i++)
-        {
-
-
-            trackerList[i].state = trackerList[i].kf.predict();
-            //cout << "State post tracker 0: " << endl << trackerList[i].state << endl;
-
-            Rect predRect;
-            predRect.width = trackerList[i].state.at<float>(8);
-            predRect.height = trackerList[i].state.at<float>(9);
-            predRect.x = trackerList[i].state.at<float>(0) - predRect.width/2;
-            predRect.y = trackerList[i].state.at<float>(1) - predRect.height/2;
-            Point center;
-            center.x = trackerList[i].state.at<float>(0);
-            center.y = trackerList[i].state.at<float>(1);
-
-            // displays the prediction result in red
-            circle(res, center, 2, CV_RGB(255,0,0), -1);
-            rectangle(res, predRect, CV_RGB(255, 0, 0), 2);
-
-            if(trackerList[i].found)
-            {
-                //displays the detection result in green
-                rectangle(res, trackerList[i].bbox, CV_RGB(0, 255, 0), 2);
-                Point center;
-                center.x = trackerList[i].bbox.x + trackerList[i].bbox.width/2;
-                center.y = trackerList[i].bbox.y + trackerList[i].bbox.height/2;
-                circle(res, center, 2, CV_RGB(20, 150, 20), -1);
-
-                trackerList[i].kf.correct(trackerList[i].meas);
-                //cout << "Measure matrix : " << endl << trackerList[i].meas << endl;
-            }
-
-        }
-        imshow("tracker", res);
-        waitKey(30);
-
-*/
-//===================
-//  Old KCF trackers |
-//===================
-
-        //updates all trackers and stores all bounding boxes
-/*        vector<Rect2d> bbVect;
-        for(int j = trackerList.size() -1 ; j >= 0; j--)
-        {
-            Rect2d bb;
-            trackerList[j]->update(frame, bb);
-
-            if(bb.x + bb.width > frame.cols -10 || bb.y + bb.height > frame.rows -10 || bb.x < 10 || bb.y < 10)
-            {
-                //removes trackers that have lost their target == out of the image (tracker update() method does not return whether the object is lost)
-                trackerList.erase(trackerList.begin()+j);
-                trackedRegions.erase(trackedRegions.begin()+j);
-                continue;
-            }
-            bbVect.push_back(bb);
-            if(int(trackedRegions.size())-1 >= j)
-                trackedRegions[j].push_back(bb);
-            else
-            {
-                vector<Rect2d> v;
-                v.push_back(bb);
-                trackedRegions.push_back(v);
-            }
-#ifdef VIZ
-            Mat clone = frame.clone();
-            rectangle(clone, bb, Scalar(0,0,255));
-            imshow("tracker" + to_string(j), clone);
-#endif
-        }
-
-        //look for trackers that have lost their target in the middle of image
-        for(int i=trackedRegions.size()-1; i >= 0; i--)
-        {
-            int x_start = trackedRegions[i][trackedRegions[i].size()-1].x;
-            int y_start = trackedRegions[i][trackedRegions[i].size()-1].y;
-            int noMvt = 0;
-            for(int j=0; j < trackedRegions[i].size()-1; j++)
-            {
-                if(trackedRegions[i][j].x == x_start && trackedRegions[i][j].y == y_start)
-                    noMvt++;
-            }
-            //if the tracked region has not move for more than 200 frames we consider that the tracker has lost its target
-            if(noMvt >= 200)
-            {
-                trackerList.erase(trackerList.begin() + i);
-                trackedRegions.erase(trackedRegions.begin() +i);
-                bbVect.erase(bbVect.begin() +i);
-            }
-        }
-
-        // applies Non Maxima Suppression and initializes new trackers for non tracked areas
-        nms(posDetections, &bbVect, &trackerList, frame);
-
-        //Result ouput trackers (CSV format)
-        for(int i=0; i < trackerList.size(); i++)
-            cout << nbFrame << ", 1, " << bbVect[i].x << ", " << bbVect[i].y << ", " << bbVect[i].width << ", " << bbVect[i].height << endl;
-*/
+        previousFrame = currentFrame.clone();
 #ifdef VIZ
         //imshow("original frame", frame);
         //imshow("opened", opened);

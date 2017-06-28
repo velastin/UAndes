@@ -201,6 +201,7 @@ int main( int argc, char** argv )
         cout << "\t 3. Path to positive testing samples " << endl;
         cout << "\t 4. Path to negative testing samples " << endl;
         cout << "\t 5. Output path to save the trained model (must contain model's name) " << endl;
+        exit(-1);
     }
 
     TrainSVM train(0.002, Size(56,56), Size(16,16), Size(8,8), Size(8,8), 9);
