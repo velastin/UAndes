@@ -68,6 +68,17 @@ public :
      */
     void fit(std::vector<std::vector<float> > * descriptors, std::vector<int> * labels, const std::string & outPath);
 
+    /**
+     * @brief TrainSVM::testModel : tests a trained model a calculate its precision and recall on a test set
+     * @param posTestFileNames : input vector of positive test files
+     * @param negTestFileNames : input vector of negative test files
+     * @param model : input model to be tested
+     * @param hardLabels : output vector of labels used for hard training
+     * @param hardDescriptors : output vector of descriptors used for hard training
+     */
+    void testModel(std::vector<std::string> * posTestFileNames, std::vector<std::string> * negTestFileNames, const cv::Ptr<cv::ml::SVM> & model, std::vector<int> * hardLabels,
+                   std::vector<std::vector<float> > * hardDescriptors);
+
 };
 
 #endif // TRAIN_SVM_H

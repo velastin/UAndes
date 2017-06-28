@@ -32,7 +32,7 @@ void TrainSVM::readSamples(const string & posPath, const string & negPath, vecto
         struct dirent *dirp2;
 
         // look for a subdirectory level under posPath
-        if(string(dirp->d_name).compare(".") == 0 || string(dirp->d_name).compare("..") == 0) // skips "." and ".." directory that are listed by readdir
+        if(string(dirp->d_name).compare(".") == 0 || string(dirp->d_name).compare("..") == 0 || string(dirp->d_name).find(".mpg") != string::npos) // skips "." and ".." directory that are listed by readdir
         {
             continue;
         }
@@ -65,7 +65,7 @@ void TrainSVM::readSamples(const string & posPath, const string & negPath, vecto
         DIR * dp2;
         struct dirent * dirp2;
 
-        if(string(dirp->d_name).compare(".") == 0 || string(dirp->d_name).compare("..") == 0)
+        if(string(dirp->d_name).compare(".") == 0 || string(dirp->d_name).compare("..") == 0 || string(dirp->d_name).find(".mpg") != string::npos)
             continue;
 
         if((dp2 = opendir((negPath + dirp->d_name).c_str())) != NULL)
@@ -83,21 +83,20 @@ void TrainSVM::readSamples(const string & posPath, const string & negPath, vecto
     }
     closedir(dp);
 
-    cout << "Finished reading all training samples " << endl;
+    cout << "Finished reading all samples " << endl;
 }
 
 
 void TrainSVM::describe(vector<string> * posFileNames, vector<string> * negFileNames, vector<vector<float> > * descriptors, vector<int> * labels,
                         bool rsz, const Size & newSize)
 {
-    bool first=true;
     for(int i=0; i < posFileNames->size(); i++)
     {
         vector<float> dsc;
         Mat image = imread((*posFileNames)[i], cv::IMREAD_GRAYSCALE);
         if(image.size() == Size(0,0))
         {
-            cout << "Could not read image file " << endl;
+            cout << "Could not read image file : " << (*posFileNames)[i] << endl;
             exit(-1);
         }
         if(rsz)
@@ -112,20 +111,8 @@ void TrainSVM::describe(vector<string> * posFileNames, vector<string> * negFileN
         this->hog.compute(image, dsc);
         descriptors->push_back(dsc);
         labels->push_back(1);
-
-
-        for(int j=0; j < dsc.size(); j++)
-        {
-            if(first)
-            {
-                cout << dsc[j];
-                first = false;
-            }
-            else
-                cout << ", " << dsc[j];
-        }
     }
-    //cout << "Processed all positive descriptors " << endl;
+    cout << "Processed all positive descriptors " << endl;
 
     for(int i=0; i < negFileNames->size(); i++)
     {
@@ -142,20 +129,9 @@ void TrainSVM::describe(vector<string> * posFileNames, vector<string> * negFileN
         this->hog.compute(image, dsc);
         descriptors->push_back(dsc);
         labels->push_back(0);
-
-        for(int j=0; j < dsc.size(); j++)
-        {
-            if(first)
-            {
-                cout << dsc[j];
-                first = false;
-            }
-            else
-                cout << ", " << dsc[j];
-        }
     }
 
-    //cout << "Processed all negative descriptors" << endl;
+    cout << "Processed all negative descriptors" << endl;
 }
 
 
@@ -180,10 +156,53 @@ void TrainSVM::fit(vector<vector<float> > * descriptors, vector<int> * labels, c
     cout << "Finished training classifier " << endl;
 }
 
+void TrainSVM::testModel(vector<string> * posTestFileNames, vector<string> * negTestFileNames, const Ptr<ml::SVM> & model, vector<int> * hardLabels,
+                         vector<vector<float> > * hardDescriptors)
+{
+    cout << "testing model ..." << endl;
+    vector<vector<float> > * descriptors = new vector<vector<float> >();
+    vector<int> * labels = new vector<int>();
+    this->describe(posTestFileNames, negTestFileNames, descriptors, labels, true, Size(56,56));
+
+    int true_positives = 0, true_negatives = 0, false_positives=0, false_negatives=0;
+    for(int i=0; i < descriptors->size(); i++)
+    {
+        int prediction = model->predict((*descriptors)[i]);
+        if(prediction!=0 && (*labels)[i]==1)
+            true_positives++;
+        if(prediction!=0 && (*labels)[i]==0)
+        {
+            false_positives++;
+            hardLabels->push_back(0);
+            hardDescriptors->push_back((*descriptors)[i]);
+        }
+        if(prediction==0 && (*labels)[i]==0)
+            true_negatives++;
+        if(prediction==0 && (*labels)[i]== 1)
+        {
+            false_negatives++;
+            hardLabels->push_back(1);
+            hardDescriptors->push_back((*descriptors)[i]);
+        }
+    }
+
+    cout << "precision : " << true_positives /(float)(true_positives +false_positives) << endl;
+    cout << "recall : " << true_positives / (float)(true_positives + false_negatives) << endl;
+}
+
 
 int main( int argc, char** argv )
 {
-    // Training
+    if(argc < 6)
+    {
+        cout << "Need 5 arguments : " << endl;
+        cout << "\t 1. Path to positive training samples " << endl;
+        cout << "\t 2. Path to negative training samples " << endl;
+        cout << "\t 3. Path to positive testing samples " << endl;
+        cout << "\t 4. Path to negative testing samples " << endl;
+        cout << "\t 5. Output path to save the trained model (must contain model's name) " << endl;
+    }
+
     TrainSVM train(0.002, Size(56,56), Size(16,16), Size(8,8), Size(8,8), 9);
     TrainSVM t(train);
 
@@ -192,53 +211,41 @@ int main( int argc, char** argv )
     vector<vector<float> > * descriptors = new vector<vector<float> >();
     vector<int> * labels = new vector<int>();
 
-    train.readSamples("/home/mathieu/STAGE/underground_dataset/pos/train/", "/home/mathieu/STAGE/underground_dataset/neg/test/", posFileNames, negFileNames);
+    //train model
+    train.readSamples(argv[1], argv[2], posFileNames, negFileNames);
     train.describe(posFileNames, negFileNames, descriptors, labels, true, Size(56,56));
 
     cout << "descriptors size = " << descriptors->size() << endl;
     cout << "labels size = " << labels->size() << endl;
-    train.fit(descriptors, labels, "/tmp/test_model.xml");
+    train.fit(descriptors, labels, argv[5]);
 
+    vector<string> * posTestFileNames = new vector<string>();
+    vector<string> * negTestFileNames = new vector<string>();
+    train.readSamples(argv[3], argv[4], posTestFileNames, negTestFileNames);
 
-    //VideoCapture cap("/home/mathieu/STAGE/Videos/Cell_phone_Spanish.Cam1.avi");
-/*    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/pos/test/A_d800mm_R6.mpg");
-    if(!cap.isOpened())
+    // test model
+    Ptr<ml::SVM> svm = ml::SVM::create();
+    svm = ml::SVM::load(argv[5]);
+    vector<int> * hardLabels = new vector<int>();
+    vector<vector<float> > * hardDescriptors = new vector<vector<float> >();
+    train.testModel(posTestFileNames, negTestFileNames, svm, hardLabels, hardDescriptors);
+
+    cout << "hardDescriptors size = " << hardDescriptors->size() << endl;
+    cout << "hardLabels size = " << hardLabels->size() << endl;
+
+    // hard training. Need to retrain the entire model since openCV does not allow to retrain an existing model
+    for(int i=0; i < hardDescriptors->size(); i++)
     {
-        cout << "Cannot read video file " << endl;
-        exit(-1);
+        descriptors->push_back((*hardDescriptors)[i]);
+        labels->push_back((*labels)[i]);
     }
-*/
-    // Test
-/*    while(1)
-    {
-        Mat testImg;
-        if(! cap.read(testImg))
-        {
-            cout << "Cannot read frame" << endl;
-            exit(-1);
-        }
+    cout << "retrain descriptors = " << descriptors->size() << endl;
+    cout << "retrain labels = " << labels->size() << endl;
 
-        Ptr<ml::SVM> svm = ml::SVM::create();
-        //svm = ml::SVM::load("/home/mathieu/STAGE/underground_dataset/results/models/openCV_model.xml");
-        svm = ml::SVM::load("/home/mathieu/STAGE/SVM/LinearSergio/Cell_phone_Spanish.Cam1-SVM.xml");
+    train.fit(descriptors, labels, argv[5]);
 
-        vector<vector<float> > descriptors;
-        vector<Rect2d> * roi = new vector<Rect2d>();
-        descriptors = train.slidingWindow(testImg, roi, true, 0.10);
-
-        for(int i=0; i<descriptors.size(); i++)
-        {
-            int prediction = svm->predict(descriptors[i]);
-            if(prediction > 0)
-            {
-                imshow("frame", testImg);
-                Mat clone = testImg.clone();
-                rectangle(clone, (*roi)[i], Scalar(0, 0, 255));
-                imshow("true detection", clone);
-                waitKey(30);
-            }
-        }
-    }
-*/
+    cout << "test after hard training " << endl;
+    svm = ml::SVM::load(argv[5]);
+    train.testModel(posTestFileNames, negTestFileNames, svm, hardLabels, hardDescriptors);
 
 }
