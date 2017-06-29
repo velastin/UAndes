@@ -152,7 +152,7 @@ def neural_network_model(data):
     l3 = tf.add(tf.matmul(l2,hidden_3_layer['weight']), hidden_3_layer['bias'])
     l3 = tf.nn.relu(l3)
 
-    output = tf.nn.softmax(tf.matmul(l3,output_layer['weight']) + output_layer['bias'], name="output_op")
+    output = tf.add(tf.matmul(l3,output_layer['weight']), output_layer['bias'], name="output_op")
 
     return output
 
