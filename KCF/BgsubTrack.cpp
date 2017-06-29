@@ -1,17 +1,9 @@
 //OpenCV
 #include <opencv2/core/core.hpp>
-#include "opencv2/xfeatures2d.hpp"
-#include "opencv2/flann.hpp"
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
-#include "opencv2/features2d/features2d.hpp"
-#include "opencv2/calib3d.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/videoio.hpp"
-#include <opencv2/video.hpp>
-#include "opencv2/imgcodecs.hpp"
 #include "opencv2/bgsegm.hpp"
-#include "opencv2/photo.hpp"
 #include <opencv2/core/utility.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/ml.hpp>
@@ -24,7 +16,6 @@
 //C++
 #include <iostream>
 #include <sstream>
-#include <cmath>
 
 #include "BgsubTrack.hpp"
 
