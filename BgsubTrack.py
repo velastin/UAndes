@@ -8,6 +8,7 @@ import tensorflow as tf
 import os
 import sys
 import glob
+import argparse
 
 import numpy as np
 
@@ -137,11 +138,11 @@ class BgsubTrack:
         boundingLocations = []
         for bRect in rectangles:
             if bRect[2] * bRect[3] > 750 and bRect[2] * bRect[3] < 6000:
-                if bRect[0] < 40 or bRect[1] < 40 or bRect[0] > frame.shape[0] - bRect[2] - 40 or bRect[1] > frame.shape[1] - bRect[1] -40: 
+                if bRect[0] < 30 or bRect[1] < 30 or bRect[0] > frame.shape[0] - bRect[2] - 60 or bRect[1] > frame.shape[1] - bRect[3] -60: 
                     continue
-                regions.append(np.copy(frame[bRect[1]-40:bRect[1]+ bRect[3], bRect[0]-40:bRect[0]+bRect[2]]))
-                boundingLocations.append((bRect[0]-40, bRect[1]-40, bRect[2]+40, bRect[3]+40))
-                cv2.rectangle(frame, (bRect[0]-40, bRect[1]-40), (bRect[0]+bRect[2], bRect[1]+bRect[3]), (0,0,255), 1)
+                regions.append(np.copy(frame[bRect[1]-30:bRect[1]+ bRect[3]+60, bRect[0]-30:bRect[0]+bRect[2]+60]))
+                boundingLocations.append((bRect[0]-30, bRect[1]-30, bRect[2]+60, bRect[3]+60))
+                cv2.rectangle(frame, (bRect[0]-30, bRect[1]-30), (bRect[0]+bRect[2]+60, bRect[1]+bRect[3]+60), (0,0,255), 1)
                     
         return regions, boundingLocations, frame
 
@@ -195,6 +196,7 @@ class BgsubTrack:
     #@param frame : input original image used to calculate histogram distance
     #@param nframe : number of the current frame
     #@param significantTrackers : input / output list of trackers that lasted more than 20 frames
+    #return : updated list of trackers, updated list of trackers that produced relevant tracks
     def updateTrackers(self, posDetections, trackerList, frame, nframe, significantTrackers):
         for i in range(len(trackerList)-1, -1, -1):
             flag = False
@@ -326,20 +328,28 @@ class BgsubTrack:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Detect pedestrians on surveillance videos')
+    parser.add_argument('model_path', help='Path to .meta file containing the graph')
+    parser.add_argument('video_path', help='Path to the video to be processed')
+    args = parser.parse_args()
+
     bgsubTrack = BgsubTrack()
-    cap = cv2.VideoCapture("/home/mathieu/STAGE/underground_dataset/pos/test/A_d800mm_R6.mpg")
+    cap = cv2.VideoCapture(args.video_path)
     #svm = cv2.ml.SVM_load("/home/mathieu/STAGE/underground_dataset/results/models/openCV_model.xml")
 
     trackerList = []
     significantTrackers = []
     with tf.Session() as sess:
-        saver = tf.train.import_meta_graph('graph.meta')
+        saver = tf.train.import_meta_graph(args.model_path)
         saver.restore(sess, tf.train.latest_checkpoint('./'))
         graph = tf.get_default_graph()
         x = graph.get_tensor_by_name("x:0")
         y = graph.get_tensor_by_name("y:0")
         op_to_restore = graph.get_tensor_by_name("output_op:0")
         print "loaded graph successfully"
+
+        currentFrame = np.ndarray(shape=(0,0))
+        previousFrame = np.ndarray(shape=(0,0))
         numFrame = -1
         while(True):
             ret, frame = cap.read()
@@ -350,10 +360,19 @@ if __name__ == '__main__':
             true_detections = np.copy(frame)
             after_nms = np.copy(frame)
             trackingResults = np.copy(frame)
+            currentFrame = np.copy(frame)
 
-            fgmask = bgsubTrack.bgsub.apply(frame)
-            ret, thresholded = cv2.threshold(fgmask, 150, 255, cv2.THRESH_BINARY)
-            im2, contours, hierarchy = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            #fgmask = bgsubTrack.bgsub.apply(frame)
+            diff_mask = np.ndarray(shape=currentFrame.shape, dtype=currentFrame.dtype)
+            contours = []
+            if currentFrame.shape != (0,0) and previousFrame.shape != (0,0):
+                diff_mask = cv2.absdiff(previousFrame, currentFrame)
+                diff_mask = cv2.cvtColor(diff_mask, cv2.COLOR_BGR2GRAY)
+                ret, diff_mask = cv2.threshold(diff_mask, 30, 255, cv2.THRESH_BINARY)
+                im2, contours, hierarchy = cv2.findContours(diff_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            #ret, thresholded = cv2.threshold(fgmask, 150, 255, cv2.THRESH_BINARY)
+            #im2, contours, hierarchy = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            #im2, contours, hierarchy = cv2.findContours(diff_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
             rectangles = []
             for c in contours:
@@ -373,11 +392,12 @@ if __name__ == '__main__':
                 for idxd, desc in enumerate(descriptors):
                     desc = desc.reshape(1, desc.shape[0])
                     feed_dict = {x:desc}
-                    regression = sess.run(op_to_restore, feed_dict)
-                    if regression [0][0] > regression[0][1]:
+                    output = sess.run(op_to_restore, feed_dict)
+
+                    if output[0][0] > output[0][1]:
                         #relocate accurately the window
                         accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
-                        posDetections.append(dt(accurateRect, regression[0][0]))
+                        posDetections.append(dt(accurateRect, output[0][0]))
                         if viz:
                             if accurateRect[0] + accurateRect[2] > frame.shape[0]:
                                 accurateRect[2] = frame.shape[0] - accurateRect[0]
@@ -395,11 +415,13 @@ if __name__ == '__main__':
             trackerList, significantTrackers = bgsubTrack.updateTrackers(posDetections, trackerList, frame, numFrame, significantTrackers)
             trackerList = bgsubTrack.addNewTrackers(posDetections, trackerList, frame, numFrame)
 
+            previousFrame = np.copy(currentFrame)
             
             if viz:
-                cv2.imshow("foreground", fgmask)
-                cv2.imshow("thresholded", thresholded)
+                #cv2.imshow("foreground", fgmask)
+                #cv2.imshow("thresholded", thresholded)
                 #cv2.imshow("opened", opened)
+                cv2.imshow("frame diff", diff_mask)
                 cv2.imshow("rectangles", frame_roi)
                 for detection in posDetections : 
                     cv2.rectangle(after_nms, (detection.bbox[0], detection.bbox[1]), (detection.bbox[0]+detection.bbox[2], detection.bbox[1]+detection.bbox[3]), (0, 0, 255))

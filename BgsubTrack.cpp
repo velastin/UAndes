@@ -28,7 +28,8 @@
 
 #include "BgsubTrack.hpp"
 
-//#define VIZ 1
+#define VIZ 1
+//#define RES 1
 
 using namespace std;
 using namespace cv;
@@ -138,12 +139,12 @@ void BgsubTrack::roiSelection(const vector<RotatedRect> & rectangles, vector<Mat
         if((bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)//(bRect.size().width * bRect.size().height > 3000))////(bRect.size().width * bRect.size().height > 3000))//(bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)// > 3000 BOSS dataset
         {
             // skips bounding boxes that are out of the image bounds
-            if(bRect.x < 40 || bRect.y < 40 || bRect.x > frame.cols - bRect.width -40|| bRect.y > frame.rows - bRect.height -40)
+            if(bRect.x < 30 || bRect.y < 30 || bRect.x > frame.cols - bRect.width -60|| bRect.y > frame.rows - bRect.height -60)
                 continue;
 
             // extracts a larger region of interest from the original image since blob detector is not really realiable for head top detection
-            regions->push_back(frame(Rect(bRect.x-40, bRect.y-40, bRect.width+40, bRect.height+40)));
-            boundingLocations->push_back(Rect2d(bRect.x-40, bRect.y-40, bRect.width+40, bRect.height+40));
+            regions->push_back(frame(Rect(bRect.x-30, bRect.y-30, bRect.width+60, bRect.height+60)));
+            boundingLocations->push_back(Rect2d(bRect.x-30, bRect.y-30, bRect.width+60, bRect.height+60));
         }
     }
 }
@@ -197,13 +198,6 @@ vector<vector<float> > BgsubTrack::slidingWindow(Mat image, vector<Rect2d> * roi
                 // breaks when the sliding windows starts to be out of bounds
                 if(i > image.rows - this->hog.winSize.height || j > image.cols - this->hog.winSize.width)
                     break;
-
-#ifdef VIZ
-                /*Mat clone = image.clone();
-                rectangle(clone, Point(j,i), Point(j+this->hog.winSize.width, i+this->hog.winSize.height), Scalar(0, 0, 255));
-                imshow("sliding window", clone);
-                waitKey(30);*/
-#endif
 
                 //extracts the window and computes HOG descriptors
                 Mat window = image(Rect(j, i, this->hog.winSize.width, this->hog.winSize.height));
@@ -297,9 +291,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<colorHi
 {
     for(int i=trackerList->size() -1; i >= 0; i--)
     {
-        //cout << "TRACKER" << to_string(i) << endl;
-        //cout << "noMeasure count = " << (*trackerList)[i].noMeasureCount << endl;
-
         // get the area of already tracked region
         int x1_tl = (*trackerList)[i].bbox.x;
         int y1_tl = (*trackerList)[i].bbox.y;
@@ -460,7 +451,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<colorHi
                         if((*trackerList)[i].locations.size() > 20)
                             significantTrackers->push_back((*trackerList)[i]);
                         trackerList->erase(trackerList->begin() +i);
-                        //cout << "erase tracker" << to_string(i) << endl;
                     }
                 }
 
@@ -472,7 +462,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<colorHi
                         if((*trackerList)[i].locations.size() > 20)
                             significantTrackers->push_back((*trackerList)[i]);
                         trackerList->erase(trackerList->begin() +i);
-                        //cout << "erase tracker" << to_string(i) << endl;
                     }
                 }
             }
@@ -486,13 +475,10 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<colorHi
                     if((*trackerList)[i].locations.size() > 20)
                         significantTrackers->push_back((*trackerList)[i]);
                     trackerList->erase(trackerList->begin() +i);
-                    //cout << "erase tracker" << to_string(i) << endl;
                 }
             }
         }
-        //waitKey(-1);
     }
-    //cout << endl;
 }
 
 double BgsubTrack::getHistDistance(const Mat & roi, Mat * b_hist, Mat * g_hist, Mat * r_hist, vector<Mat> histogram)
@@ -510,6 +496,7 @@ double BgsubTrack::getHistDistance(const Mat & roi, Mat * b_hist, Mat * g_hist, 
     cv::calcHist( &bgr_planes[2], 1, 0, cv::Mat(), (*r_hist), 1, &histSize, &histRange, true, false);
 
     double distance = 0;
+    // Battacharya distance
     distance += compareHist((*b_hist), histogram[0], HISTCMP_HELLINGER);
     distance += compareHist((*g_hist), histogram[1], HISTCMP_HELLINGER);
     distance += compareHist((*r_hist), histogram[2], HISTCMP_HELLINGER);
@@ -632,8 +619,10 @@ int main( int argc, char** argv )
                                       (*outputROI)[j].width, (*outputROI)[j].height);
                     posDetections.push_back(dt(accurateRect, conf.at<float>(0,0)));
 
+#ifdef RES
                     //Ouput detections results (CSV format)
-                    //cout << nbFrame << ", 1, " << accurateRect.x << ", " << accurateRect.y << ", " << accurateRect.width << ", " << accurateRect.height << endl;
+                    cout << nbFrame << ", 1, " << accurateRect.x << ", " << accurateRect.y << ", " << accurateRect.width << ", " << accurateRect.height << endl;
+#endif
 #ifdef VIZ
                     if(accurateRect.x + accurateRect.width > frame.cols)
                         accurateRect.width = frame.cols - accurateRect.x;
@@ -643,9 +632,11 @@ int main( int argc, char** argv )
                     rectangle(true_detections, accurateRect, Scalar(0, 0, 255));
 #endif
                 }
-                /*else
+#ifdef RES
+                else
                     cout << nbFrame << ", 0, " << (*outputROI)[j].x + boundingLocations[i].x << ", " << (*outputROI)[j].y + boundingLocations[i].y
-                         << (*outputROI)[j].width << ", " << (*outputROI)[j].height << endl;*/
+                         << (*outputROI)[j].width << ", " << (*outputROI)[j].height << endl;
+#endif
             }
         }
 
@@ -664,7 +655,6 @@ int main( int argc, char** argv )
 //==========================
 // color histogram tracking |
 //==========================
-        //cout << "frame n°" << nbFrame << endl;
         bst.updateTrackers(posDetections, &trackerList, frame, nbFrame, svm, & significantTrackers);
         bst.addNewTrackers(posDetections, &trackerList, frame, nbFrame);
 
@@ -681,7 +671,7 @@ int main( int argc, char** argv )
         //imshow("contours", contoursImg);
         //imshow("foreground", fgmask);
         //imshow("thresholded", thresholded);
-        //imshow("bboxes", bboxes);
+        imshow("bboxes", bboxes);
         //imshow("true_detections", true_detections);
         imshow("tracking res", trackingResult);
         //imshow("all detections", all_detections);
@@ -690,8 +680,8 @@ int main( int argc, char** argv )
 
         nbFrame++;
     }
-    //cout << "significant trackers size = " << significantTrackers.size() << endl;
 
+#ifdef RES
     // ouput tracking results (CSV format)
     for(int i=0; i < significantTrackers.size(); i++)
     {
@@ -700,4 +690,6 @@ int main( int argc, char** argv )
                     significantTrackers[i].locations[j].x + significantTrackers[i].locations[j].width / 2 << ", " <<
                     significantTrackers[i].locations[j].y + significantTrackers[i].locations[j].height / 2 << endl;
     }
+#endif
+
 }

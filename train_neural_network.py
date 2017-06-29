@@ -100,20 +100,19 @@ print "images size = ", len(images)
 
 
 #reduce size of training samples (decrease training time, should also decrease performances)
-reduc_pos = images_pos[0:300]
-reduc_neg = images_neg[-300:]
-lab_pos = labels[0:300]
-lab_neg = labels[-300:]
+reduc_pos = images_pos[0:3000]
+reduc_neg = images_neg[-3000:]
+
 images = []
 labels = []
-
-
 #mix positive and negative samples in order not to learn all positives first 
 for idx, im in enumerate(reduc_pos):
     images.append(im)
     labels.append(np.array([1, 0]).reshape(1, 2))
     images.append(reduc_neg[idx])
     labels.append(np.array([0, 1]).reshape(1, 2))
+
+print labels
 
 
 print "labels size = ", len(labels)
@@ -167,9 +166,9 @@ def train_neural_network(x):
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
-        epoch_loss = 100000000
+	epoch_loss = 1000000000
         epoch = 0
-        while epoch_loss > 5000:
+        while epoch_loss > 100.0:
             epoch_loss = 0
             i = 0
             while i < len(images):
@@ -228,6 +227,6 @@ def train_neural_network(x):
 
         #saves the graph in the current directory
         saver = tf.train.Saver()
-        saver.save(sess, "graph")
+        saver.save(sess, "/home/mathieu/STAGE/underground_dataset/results/models/NN_HOG_6000/graph")
 
 train_neural_network(x)

@@ -143,12 +143,12 @@ void BgsubTrack::roiSelection(const vector<RotatedRect> & rectangles, vector<Mat
         if((bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)
         {
             // skips bounding boxes that are out of the image bounds
-            if(bRect.x < 40 || bRect.y < 40 || bRect.x > frame.cols - bRect.width -40|| bRect.y > frame.rows - bRect.height -40)
+            if(bRect.x < 30 || bRect.y < 30 || bRect.x > frame.cols - bRect.width -60|| bRect.y > frame.rows - bRect.height -60)
                 continue;
 
             // extracts a larger region of interest from the original image since blob detector is not really realiable for head top detection
-            regions->push_back(frame(Rect(bRect.x-40, bRect.y-40, bRect.width+40, bRect.height+40)));
-            boundingLocations->push_back(Rect2d(bRect.x-40, bRect.y-40, bRect.width+40, bRect.height+40));
+            regions->push_back(frame(Rect(bRect.x-30, bRect.y-30, bRect.width+60, bRect.height+60)));
+            boundingLocations->push_back(Rect2d(bRect.x-30, bRect.y-30, bRect.width+60, bRect.height+60));
         }
     }
 }
