@@ -56,9 +56,9 @@ struct colorHistTracker
     std::vector<cv::Mat> histogram; // last BGR histogram
     cv::Rect bbox;
     std::vector<int> numFrame; // used to know in which frame was found the person (for calculating metrics)
-    int noMeasureCount = 0;
+    int noMeasureCount = 0, id;
 
-    colorHistTracker(const cv::Rect & b, const cv::Mat & frame, const int & nf):bbox(b)
+    colorHistTracker(const cv::Rect & b, const cv::Mat & frame, const int & nf, const int & tracker_id):bbox(b), id(tracker_id)
     {
         locations.push_back(b);
         numFrame.push_back(nf);
@@ -104,8 +104,9 @@ public:
      * @param trackerList : input/output vector of trackers
      * @param frame : current frame
      * @param nframe : number of the current frame
+     * @param id : current id available for new trackers
      */
-    void addNewTrackers(const std::vector<dt> & posDetections, std::vector<colorHistTracker> * trackerList, const cv::Mat & frame, const int & nframe);
+    void addNewTrackers(const std::vector<dt> & posDetections, std::vector<colorHistTracker> * trackerList, const cv::Mat & frame, const int & nframe, int * id);
 
     /**
      * @brief nms : apply Non Maxima Suppression on the detections
@@ -170,6 +171,14 @@ public:
      * @return : distance using Hellinger histogram comparison
      */
     double getHistDistance(const cv::Mat & roi, cv::Mat * b_hist, cv::Mat * g_hist, cv::Mat * r_hist, std::vector<cv::Mat> histogram);
+
+
+    /**
+     * @brief replayTracks : display retained tracks
+     * @param videoPath : path to the source video
+     * @param significantTrackers : list of retained trackers
+     */
+    void replayTracks(const std::string &videoPath, const std::vector<colorHistTracker> & significantTrackers);
 };
 
 

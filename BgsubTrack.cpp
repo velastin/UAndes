@@ -32,7 +32,7 @@ BgsubTrack::BgsubTrack(const HOGDescriptor & hogD, const Ptr<BackgroundSubtracto
     this->bgsub = gaussMix;
 }
 
-void BgsubTrack::addNewTrackers(const vector<dt> & posDetections, vector<colorHistTracker> * trackerList, const Mat & frame, const int & nframe)
+void BgsubTrack::addNewTrackers(const vector<dt> & posDetections, vector<colorHistTracker> * trackerList, const Mat & frame, const int & nframe, int * id)
 {
     for(int i=0; i < posDetections.size(); i--)
     {
@@ -44,7 +44,10 @@ void BgsubTrack::addNewTrackers(const vector<dt> & posDetections, vector<colorHi
         int area_1 = posDetections[i].boundingBox.width * posDetections[i].boundingBox.height;
 
         if(trackerList->size() == 0)
-            trackerList->push_back(colorHistTracker(posDetections[0].boundingBox, frame, nframe));
+        {
+            trackerList->push_back(colorHistTracker(posDetections[0].boundingBox, frame, nframe, (*id)));
+            (*id) = (*id) + 1;
+        }
         else
         {
             bool flag_nms = false;
@@ -73,7 +76,8 @@ void BgsubTrack::addNewTrackers(const vector<dt> & posDetections, vector<colorHi
             if(! flag_nms)
             {
                 // instanciates a new tracker
-                trackerList->push_back(colorHistTracker(posDetections[i].boundingBox, frame, nframe));
+                trackerList->push_back(colorHistTracker(posDetections[i].boundingBox, frame, nframe, (*id)));
+                (*id) = (*id) + 1;
             }
         }
     }
@@ -127,7 +131,7 @@ void BgsubTrack::roiSelection(const vector<RotatedRect> & rectangles, vector<Mat
     for(int i=0; i < (int)rectangles.size(); i++)
     {
         Rect bRect = rectangles[i].boundingRect();
-        if((bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)//(bRect.size().width * bRect.size().height > 3000))////(bRect.size().width * bRect.size().height > 3000))//(bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)// > 3000 BOSS dataset
+        if((bRect.size().width * bRect.size().height) > 750 && (bRect.size().width * bRect.size().height) < 6000)
         {
             // skips bounding boxes that are out of the image bounds
             if(bRect.x < 30 || bRect.y < 30 || bRect.x > frame.cols - bRect.width -60|| bRect.y > frame.rows - bRect.height -60)
@@ -308,9 +312,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<colorHi
             // Note : increase the jaccard coefficient threshold increases the accuracy of each tracker but can cause the deletion of "young" good tracks
             if(overlap_area / (float) total_area > 0.5)
             {
-                //cout << "overlapping found" << endl;
-                //imshow("measure", frame(posDetections[j].boundingBox));
-
                 Mat b_hist, g_hist, r_hist;
                 //calculates the distance between tracker and detection color histograms
                 double distance = this->getHistDistance(frame(posDetections[j].boundingBox).clone(), &b_hist, &g_hist, &r_hist, (*trackerList)[i].histogram);
@@ -496,12 +497,56 @@ double BgsubTrack::getHistDistance(const Mat & roi, Mat * b_hist, Mat * g_hist, 
     return distance;
 }
 
+void BgsubTrack::replayTracks(const string & videoPath, const vector<colorHistTracker> & significantTrackers)
+{
+    VideoCapture cap(videoPath);
+    if(!cap.isOpened())
+    {
+        cout << "replayTracks : cannot open video file" << endl;
+        exit(-1);
+    }
+
+    int nbFrame = 0;
+    Mat frame;
+    while(1)
+    {
+        if(!cap.read(frame))
+            break;
+        Mat trackers = frame.clone();
+        for(int i=0; i < significantTrackers.size(); i++)
+        {
+            for(int j=0; j < significantTrackers[i].numFrame.size(); j++)
+            {
+                if(nbFrame==significantTrackers[i].numFrame[j])
+                {
+                    rectangle(trackers, significantTrackers[i].locations[j], Scalar(0,0,255));
+                    putText(trackers, to_string(significantTrackers[i].id), Point(significantTrackers[i].locations[j].x + 5, significantTrackers[i].locations[j].y + 15),
+                            FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,0,255));
+                }
+            }
+        }
+        imshow("relevant_trackers", trackers);
+        waitKey(30);
+        nbFrame++;
+    }
+
+}
 
 int main( int argc, char** argv )
 {
+    if(argc < 3)
+    {
+        cout << "Need 2 arguments : " << endl;
+        cout << "\t 1. Path to the video to be processed" << endl;
+        cout << "\t 2. Path to SVM model" << endl;
+        exit(-1);
+    }
+
     // background subtraction
     Mat frame, fgmask;
     Ptr<BackgroundSubtractor> gaussMix = createBackgroundSubtractorMOG2();
+    int nbFrame = 0;
+    Mat currentFrame, previousFrame;
 
     //SVM + HOG
     HOGDescriptor hogD(Size(56,56), Size(16,16), Size(8,8), Size(8,8), 9);
@@ -513,6 +558,8 @@ int main( int argc, char** argv )
     // Trackers
     vector<colorHistTracker> trackerList;
     vector<colorHistTracker> significantTrackers;
+    int * id = new int();
+    (*id) = 0;
 
     // Video
     VideoCapture capture(argv[1]);
@@ -522,8 +569,6 @@ int main( int argc, char** argv )
         exit(-1);
     }
 
-    int nbFrame = 0;
-    Mat currentFrame, previousFrame;
     // iterates until the last frame of the video
     while(1)
     {
@@ -647,12 +692,14 @@ int main( int argc, char** argv )
 // color histogram tracking |
 //==========================
         bst.updateTrackers(posDetections, &trackerList, frame, nbFrame, svm, & significantTrackers);
-        bst.addNewTrackers(posDetections, &trackerList, frame, nbFrame);
+        bst.addNewTrackers(posDetections, &trackerList, frame, nbFrame, id);
 
         Mat trackingResult = frame.clone();
         for(int i=0; i < trackerList.size(); i++)
         {
             rectangle(trackingResult, trackerList[i].bbox, Scalar(0, 0, 255));
+            putText(trackingResult, to_string(trackerList[i].id), Point(trackerList[i].bbox.x + 5, trackerList[i].bbox.y + 15),
+                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,0,255));
         }
 
         previousFrame = currentFrame.clone();
@@ -671,6 +718,9 @@ int main( int argc, char** argv )
 
         nbFrame++;
     }
+
+    destroyAllWindows();
+    bst.replayTracks(argv[1], significantTrackers);
 
 #ifdef RES
     // ouput tracking results (CSV format)
