@@ -19,7 +19,7 @@
 
 #include "BgsubTrack.hpp"
 
-#define VIZ 1
+//#define VIZ 1
 //#define RES 1
 
 using namespace std;
@@ -488,7 +488,7 @@ double BgsubTrack::getHistDistance(const Mat & roi, Mat * b_hist, Mat * g_hist, 
     cv::calcHist( &bgr_planes[2], 1, 0, cv::Mat(), (*r_hist), 1, &histSize, &histRange, true, false);
 
     double distance = 0;
-    // Battacharya distance
+    // Hellinger distance
     distance += compareHist((*b_hist), histogram[0], HISTCMP_HELLINGER);
     distance += compareHist((*g_hist), histogram[1], HISTCMP_HELLINGER);
     distance += compareHist((*r_hist), histogram[2], HISTCMP_HELLINGER);
@@ -529,7 +529,86 @@ void BgsubTrack::replayTracks(const string & videoPath, const vector<colorHistTr
         waitKey(30);
         nbFrame++;
     }
+}
 
+vector<colorHistTracker> BgsubTrack::fuseTrackers(vector<colorHistTracker> significantTrackers, vector<Mat> listFrames)
+{
+    //cout << "signicantTrackers size = " << significantTrackers.size() << endl;
+
+    vector<colorHistTracker> fusedTrackers;
+    for(int i=0; i < significantTrackers.size(); i++)
+    {
+        //cout << "TRACKER" << i << endl;
+        fusedTrackers.push_back(significantTrackers[i]);
+        for(int j=0; j < significantTrackers.size(); j++)
+        {
+            if(i==j)
+                continue;
+
+            //check temporal coherence
+            int temp_dist = significantTrackers[j].numFrame[0] - significantTrackers[i].numFrame[significantTrackers[i].numFrame.size()-1];
+            if(temp_dist > 50 || temp_dist < 0)
+            {
+                //cout << "temp_dist = " << temp_dist << endl;
+                continue;
+            }
+
+            Rect location1 = significantTrackers[i].locations[significantTrackers[i].locations.size() -1];
+            Rect location2 = significantTrackers[i].locations[0];
+
+            int dx = abs(location1.x - location2.x);
+            int dy = abs(location1.y - location2.y);
+
+            //check spatial coherence
+            if(dx >= 60 || dy >= 60)
+            {
+                //cout << "dx = " << dx << "\t dy = " << dy << endl;
+                continue;
+            }
+
+            Mat b_hist, g_hist, r_hist;
+            // histogram distance between last histogram of "i" track and first histogram of "j" tracker
+            double distance = this->getHistDistance(listFrames[significantTrackers[j].numFrame[0]](significantTrackers[j].locations[0]),
+                                                    & b_hist, & g_hist, & r_hist, significantTrackers[i].histogram);
+
+            double mean_distance = 0;
+            for(int k=0; k < significantTrackers[i].distances.size(); k++)
+                mean_distance += significantTrackers[i].distances[k];
+
+            mean_distance = mean_distance / significantTrackers[i].distances.size();
+
+            //check appearance coherence
+            if(distance >= 3.0*mean_distance)
+            {
+                //cout << "distance = " << distance << "\t mean_distance = " << mean_distance << endl;
+                continue;
+            }
+
+            cout << "track " << i << " fused with track " << j << endl << endl;
+            //if all coherence tests have been passed then we can fuse the 2 tracks
+            /*cout << "fused significantTracker locations size = " << significantTrackers[i].locations.size() << endl;
+            cout << "fused significantTracker 2 locations size = " << significantTrackers[j].locations.size() << endl;
+            cout << "end first track = " << significantTrackers[i].numFrame[significantTrackers[i].numFrame.size()-1] << endl;
+            cout << "begin second track = " << significantTrackers[j].numFrame[0] << endl;
+            cout << "temporal distance = " << temp_dist << endl;*/
+            for(int k=1; k < temp_dist; k++)
+            {
+                //linear interpolation to fill the fragmentation
+                Rect l(significantTrackers[i].locations[significantTrackers[i].locations.size()-1].x + (k* dx *(1/25.)),
+                       significantTrackers[i].locations[significantTrackers[i].locations.size()-1].y + (k* dy *(1/25.)),
+                       significantTrackers[i].locations[significantTrackers[i].locations.size()-1].width,
+                       significantTrackers[i].locations[significantTrackers[i].locations.size()-1].height);
+
+                fusedTrackers[fusedTrackers.size()-1].locations.push_back(l);
+            }
+            for(int k=0; k < significantTrackers[j].locations.size(); k++)
+                fusedTrackers[fusedTrackers.size()-1].locations.push_back(significantTrackers[j].locations[k]);
+
+            //cout << "locations size after fusion = " << fusedTrackers[fusedTrackers.size() -1].locations.size() << endl;
+        }
+        //cout << endl;
+    }
+    return fusedTrackers;
 }
 
 int main( int argc, char** argv )
@@ -563,6 +642,7 @@ int main( int argc, char** argv )
 
     // Video
     VideoCapture capture(argv[1]);
+    vector<Mat> listFrames;
     if(!capture.isOpened())
     {
         cout << "Cannot open video file" << endl;
@@ -580,6 +660,7 @@ int main( int argc, char** argv )
         }
 
         currentFrame = frame.clone();
+        listFrames.push_back(frame.clone());
 
         //Applies background subtraction for the current frame and update weights of each pixel
         //bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
@@ -720,7 +801,10 @@ int main( int argc, char** argv )
     }
 
     destroyAllWindows();
-    bst.replayTracks(argv[1], significantTrackers);
+    vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
+    bst.replayTracks(argv[1], fusedTrackers);
+    //bst.replayTracks(argv[1], significantTrackers);
+
 
 #ifdef RES
     // ouput tracking results (CSV format)

@@ -155,7 +155,7 @@ public:
      * @param frame : input current image
      * @param nframe : input number of the current frame
      * @param svm : input loaded svm model
-     * @param significantTrackers : output vector that stores all tracks that lasted more than 40 frames
+     * @param significantTrackers : output vector that stores all tracks that lasted more than 20 frames
      */
     void updateTrackers(const std::vector<dt> & posDetections, std::vector<colorHistTracker> * trackerList, const cv::Mat & frame, const int & nframe,
                                const cv::Ptr<cv::ml::SVM> & svm, std::vector<colorHistTracker> * significantTrackers);
@@ -179,6 +179,14 @@ public:
      * @param significantTrackers : list of retained trackers
      */
     void replayTracks(const std::string &videoPath, const std::vector<colorHistTracker> & significantTrackers);
+
+    /**
+     * @brief fuseTrackers : try to recover from track fragmentation by re-identifying same target tracked twice
+     * @param significantTrackers : input vector of all tracks that lasted more than 20 frames
+     * @param listFrames : input vector of all frames, used to calculate histogram distances
+     * @return : vector of fused tracks (output vector size <= input vector size)
+     */
+    std::vector<colorHistTracker> fuseTrackers(std::vector<colorHistTracker> significantTrackers, std::vector<cv::Mat> listFrames);
 };
 
 
