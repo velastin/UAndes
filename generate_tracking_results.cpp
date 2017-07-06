@@ -6,7 +6,6 @@
 // Opencv 3.2
 #include <opencv2/core/utility.hpp>
 
-
 using namespace std;
 using namespace cv;
 
@@ -35,7 +34,7 @@ struct head
  * @param path : input path to the CSV file
  * @return : vector of "head" structures
  */
-vector<head> readResults(string path)
+vector<head> readResults(const string & path)
 {
     ifstream csv(path, ios::in);
     if(! (csv))
@@ -83,13 +82,13 @@ vector<head> readResults(string path)
  * @param path : input path to the ground truth file
  * @return : vector of "head" structures
  */
-vector<head> readGT(string path)
+vector<head> readGT(const string & path)
 {
     ifstream gt(path, ios::in);
 
     if(! (gt))
     {
-        cout << "Could not open one of the files given" << endl;
+        cout << "Could not open GT file" << endl;
         exit(-1);
     }
 
@@ -177,7 +176,7 @@ double computeOverlap(const Rect & r1, const Rect & r2)
 }
 
 /**
- * @brief computeTPFP : computes the number of true positives and false positives
+ * @brief computeTPFP : computes the number of True Positives (TP) and False Positives (FP)
  * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
  * @param gt_heads : input vector of ground truth "head" structures
  * @param fp : output number of false positives
@@ -225,7 +224,7 @@ int computeTPFP(const vector<head> & heads, const vector<head> & gt_heads, int *
 
 
 /**
- * @brief computeFN : computes the number of false negatives
+ * @brief computeFN : computes the number of False Negatives (FN)
  * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
  * @param gt_heads : input vector of ground truth "head" structures
  * @return : number of false negatives
@@ -269,7 +268,7 @@ int computeFN(const vector<head> & heads, const vector<head> & gt_heads)
 }
 
 /**
- * @brief computeCloseness : compute the closeness between pairs of algorithm and GT tracks
+ * @brief computeCloseness : compute the closeness between pairs of algorithm and GT tracks and the corresponding standard deviation
  * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
  * @param gt_heads : input vector of ground truth "head" structures
  * @param pairs : input vector of pairs between GT and algorithm tracks
@@ -294,6 +293,7 @@ double computeCloseness(const vector<head> & heads, const vector<head> & gt_head
                     sum_closeness_vec[i] += computeOverlap(heads[pairs[i].first].bboxes[j], gt_heads[pairs[i].second].bboxes[k]);
                     deviation_vec[i].push_back(computeOverlap(heads[pairs[i].first].bboxes[j], gt_heads[pairs[i].second].bboxes[k]));
                     temporal_coherence++;
+                    break;
                 }
             }
         }
@@ -347,7 +347,7 @@ double computeCloseness(const vector<head> & heads, const vector<head> & gt_head
  * @param pairs : input vector of pairs between GT and algorithm tracks
  * @return : number of frame latency between beginning of GT track and earlieast beginning of algorithm track
  */
-int computeLatency(vector<head> heads, vector<head> gt_heads, vector<pair<int, int> > pairs)
+int computeLatency(const vector<head> & heads, const vector<head> & gt_heads, const vector<pair<int, int> > & pairs)
 {
     int latency = 0;
     for(int i=0; i < pairs.size(); i++)
@@ -381,6 +381,181 @@ int computeLatency(vector<head> heads, vector<head> gt_heads, vector<pair<int, i
     return latency;
 }
 
+/**
+ * @brief computeTDE : computes the Track Distance Error (TDE) and the corresponding standard deviation
+ * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
+ * @param gt_heads : input vector of ground truth "head" structures
+ * @param pairs : input vector of pairs between GT and algorithm tracks
+ * @param standardDeviation : output standard deviation of the track distance error
+ * @return : track distance error value
+ */
+double computeTDE(const vector<head> & heads, const vector<head> & gt_heads, const vector<pair<int, int> > & pairs, double * standardDeviation)
+{
+    vector<double> mean_dist(pairs.size());
+    vector<vector<double> > dist_vec(pairs.size());
+    for(int i=0; i < pairs.size(); i++)
+    {
+        int temporal_coherence = 0;
+        for(int j=0; j < heads[pairs[i].first].numFrame.size(); j++)
+        {
+            for(int k=0; k < gt_heads[pairs[i].second].numFrame.size(); k++)
+            {
+                if(heads[pairs[i].first].numFrame[j] == gt_heads[pairs[i].second].numFrame[k])
+                {
+                    // euclidean distance between two 2D points
+                    mean_dist[i] += sqrt(pow(abs(gt_heads[pairs[i].second].centroids[k].x - heads[pairs[i].first].centroids[j].x), 2)
+                                              + pow(abs(gt_heads[pairs[i].second].centroids[k].y - heads[pairs[i].first].centroids[j].y), 2));
+                    dist_vec[i].push_back(sqrt(pow(abs(gt_heads[pairs[i].second].centroids[k].x - heads[pairs[i].first].centroids[j].x), 2)
+                                          + pow(abs(gt_heads[pairs[i].second].centroids[k].y - heads[pairs[i].first].centroids[j].y), 2)));
+                    temporal_coherence++;
+                    break;
+                }
+            }
+        }
+        mean_dist[i] = mean_dist[i] / temporal_coherence;
+    }
+
+    // sums products between all distances of one track pair and track mean distance. Do that for all track pairs
+    double product_sum = 0;
+    for(int i=0; i < dist_vec.size(); i++)
+        for(int j=0; j < dist_vec[i].size(); j++)
+            product_sum += dist_vec[i][j] * mean_dist[i];
+
+    double sum_distances = 0;
+    for(int i=0; i < dist_vec.size(); i++)
+        for(int j=0; j < dist_vec[i].size(); j++)
+            sum_distances += dist_vec[i][j];
+
+    double track_distance_error = product_sum / sum_distances;
+
+
+    // computes the overall standard deviation of the track distance error
+    vector<double> deviation(pairs.size());
+    for(int i=0; i < dist_vec.size(); i++)
+    {
+        for(int j=0; j < dist_vec[i].size(); j++)
+        {
+            deviation[i] += pow(dist_vec[i][j] - mean_dist[i], 2);
+        }
+        deviation[i] = deviation[i] / (dist_vec[i].size() -1);
+        deviation[i] = sqrt(deviation[i]);
+    }
+
+    double sum_product=0;
+    for(int i=0; i < dist_vec.size(); i++)
+        for(int j=0; j < dist_vec[i].size(); j++)
+            sum_product += dist_vec[i][j] * deviation[i];
+
+    (*standardDeviation) = sum_product / sum_distances;
+
+    return track_distance_error;
+}
+
+
+/**
+ * @brief computeFragmentation : compute the number of track fragmentations for all tracks
+ * @param pairs : input vector of pairs between GT and algorithm tracks
+ * @return : number of track fragmentations
+ */
+int computeFragmentation(const vector<pair<int, int> > & pairs)
+{
+    int track_fragmentation = 0;
+    vector<int> gt_done;
+    for(int i=0; i < pairs.size(); i++)
+    {
+        // looks for multiple association with the same ground truth track and count each additional association as track_fragmentation
+        if(find(gt_done.begin(), gt_done.end(), pairs[i].second) != gt_done.end())
+            track_fragmentation++;
+        else
+            gt_done.push_back(pairs[i].second);
+    }
+    return track_fragmentation;
+}
+
+
+/**
+ * @brief computeIDC : computes the number of ID changes for all system tracks
+ * @param pairs : input vector of pairs between GT and algorithm tracks
+ * @return : number of ID changes
+ */
+int computeIDC(const vector<pair<int, int> > & pairs)
+{
+    int id_changes = 0;
+    vector<pair<int, int> > done_pairs;
+    vector<int> done_sys_track;
+    for(int i=0; i < pairs.size(); i++)
+    {
+        //if the system track of the current pair has already been associated with a ground truth track
+        if(find(done_sys_track.begin(), done_sys_track.end(), pairs[i].first) != done_sys_track.end())
+        {
+            // and the associated ground truth track is different from the previous one
+            if(find(done_pairs.begin(), done_pairs.end(), pairs[i]) == done_pairs.end())
+                id_changes++;
+        }
+        else
+        {
+            done_sys_track.push_back(pairs[i].first);
+            done_pairs.push_back(pairs[i]);
+        }
+    }
+    return id_changes;
+}
+
+
+/**
+ * @brief computeCompleteness : computes the overall completeness of system tracks and the associated standard deviation
+ * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
+ * @param gt_heads : input vector of ground truth "head" structures
+ * @param pairs : input vector of pairs between GT and algorithm tracks
+ * @param standardDeviation : output standard deviation of the track completeness
+ * @return : track completeness value
+ */
+double computeCompleteness(const vector<head> & heads, const vector<head> & gt_heads, const vector<pair<int, int> > & pairs, double * standardDeviation)
+{
+    double completeness = 0;
+    vector<double> completeness_vec(pairs.size());
+    for(int i=0; i < pairs.size(); i++)
+    {
+        double max_completeness = 0;
+        bool flag = false;
+        // check if there is more than one track associated with a GT track (second element of the pair)
+        for(int j=0; j < pairs.size(); j++)
+        {
+            if(i==j)
+                continue;
+
+            // if multiple tracks are associated with the same GT track we use the one that generates the maximal completeness
+            if(pairs[i].second == pairs[j].second)
+            {
+                double maxi = max(heads[pairs[i].first].numFrame.size() / (double)gt_heads[pairs[i].second].numFrame.size(),
+                                  heads[pairs[j].first].numFrame.size() / (double)gt_heads[pairs[j].second].numFrame.size());
+                if(maxi > max_completeness)
+                    max_completeness = maxi;
+                flag = true;
+            }
+        }
+        if(flag)
+        {
+            completeness += max_completeness;
+            completeness_vec[i] = max_completeness;
+        }
+        else
+        {
+            completeness += heads[pairs[i].first].numFrame.size() / (double)gt_heads[pairs[i].second].numFrame.size();
+            completeness_vec[i] = heads[pairs[i].first].numFrame.size() / (double)gt_heads[pairs[i].second].numFrame.size();
+        }
+    }
+    completeness = completeness / pairs.size();
+
+    //calculates standard deviation of the track completeness;
+    for(int i=0; i < completeness_vec.size(); i++)
+        (*standardDeviation) += abs(completeness_vec[i] - completeness);
+
+    (*standardDeviation) = sqrt((*standardDeviation) / (double)(completeness_vec.size()-1));
+
+    return completeness;
+}
+
 
 int main( int argc, char** argv )
 {
@@ -402,12 +577,24 @@ int main( int argc, char** argv )
     double closenessDeviation = 0;
     double closeness = computeCloseness(heads, gt_heads, pairs, &closenessDeviation);
     int latency = computeLatency(heads, gt_heads, pairs);
+    double distanceDeviation = 0;
+    double track_distance_error = computeTDE(heads, gt_heads, pairs, &distanceDeviation);
+    int track_fragmentation = computeFragmentation(pairs);
+    int id_changes = computeIDC(pairs);
+    double completenessDeviation = 0;
+    double completeness = computeCompleteness(heads, gt_heads, pairs, & completenessDeviation);
 
+    cout << "GT pedestrians = " << gt_heads.size() << endl;
     cout << "true_positives = " << true_positives << endl;
     cout << "false_positives = " << false_positives << endl;
     cout << "false_negatives = " << false_negatives << endl;
     cout << "closeness = " << closeness << endl;
-    cout << "closeness deviation = " << closenessDeviation << endl;
+    cout << "closeness standard deviation = " << closenessDeviation << endl;
     cout << "latency = " << latency << endl;
-
+    cout << "track distance error = " << track_distance_error << endl;
+    cout << "distance error standard deviation = " << distanceDeviation << endl;
+    cout << "track fragmentation = " << track_fragmentation << endl;
+    cout << "id changes = " << id_changes << endl;
+    cout << "completeness = " << completeness << endl;
+    cout << "completeness standard deviation = " << completenessDeviation << endl;
 }
