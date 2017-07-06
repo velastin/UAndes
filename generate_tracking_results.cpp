@@ -10,6 +10,14 @@
 using namespace std;
 using namespace cv;
 
+//==================================================
+//  All the metrics used in this file are computed  |
+//  according to the following paper :              |
+//  "Quantitative evaluation of different aspects   |
+//  of motion trackers under various challenges"    |
+//==================================================
+
+
 //structure to store information about a track sequence
 struct head
 {
@@ -22,14 +30,17 @@ struct head
 }typedef head;
 
 
-int main( int argc, char** argv )
+/**
+ * @brief readResults : read CSV file of generated results
+ * @param path : input path to the CSV file
+ * @return : vector of "head" structures
+ */
+vector<head> readResults(string path)
 {
-    ifstream csv(argv[1], ios::in);
-    ifstream gt(argv[2], ios::in);
-
-    if(! (csv || gt))
+    ifstream csv(path, ios::in);
+    if(! (csv))
     {
-        cout << "Could not open one of the files given" << endl;
+        cout << "Could not open CSV file" << endl;
         exit(-1);
     }
 
@@ -64,16 +75,47 @@ int main( int argc, char** argv )
         heads[heads.size()-1].bboxes.push_back(Rect(x-28, y-28, 56, 56));
     }
 
+    return heads;
+}
+
+/**
+ * @brief readGT : read the ground truth file (Viper xml format)
+ * @param path : input path to the ground truth file
+ * @return : vector of "head" structures
+ */
+vector<head> readGT(string path)
+{
+    ifstream gt(path, ios::in);
+
+    if(! (gt))
+    {
+        cout << "Could not open one of the files given" << endl;
+        exit(-1);
+    }
 
     // parses xgtf file by hand because c++ xml parsers seem not suitable for xgtf file, or the xgtf file is too complicated
+    vector<head> gt_heads;
     vector<int> frame_number_gt;
     vector<Rect> gt_bboxes;
     vector<Point> gt_centroids;
-    int gt_heads = 0;
+    int nb_gt_heads = 0;
+    string line;
     while(getline(gt, line))
     {
-        if(line.find("\"Cabeza\"") != string::npos)
-            gt_heads++;
+        if(line.find("attribute name=\"Cabeza\"") != string::npos)
+        {
+            if(nb_gt_heads!=0)
+            {
+                gt_heads.push_back(head("gt_head"+to_string(nb_gt_heads-1)));
+                gt_heads[gt_heads.size()-1].numFrame = frame_number_gt;
+                gt_heads[gt_heads.size()-1].centroids = gt_centroids;
+                gt_heads[gt_heads.size()-1].bboxes = gt_bboxes;
+                frame_number_gt.clear();
+                gt_centroids.clear();
+                gt_bboxes.clear();
+            }
+            nb_gt_heads++;
+        }
         if(line.find("data:obox") != string::npos)
         {
             string framespan1 = line.substr(line.find("framespan=")+11, line.find("height=")-line.find("framespan")-13);
@@ -108,113 +150,264 @@ int main( int argc, char** argv )
             }
         }
     }
+    //adds the last head
+    gt_heads.push_back(head("gt_head"+to_string(nb_gt_heads-1)));
+    gt_heads[gt_heads.size()-1].numFrame = frame_number_gt;
+    gt_heads[gt_heads.size()-1].centroids = gt_centroids;
+    gt_heads[gt_heads.size()-1].bboxes = gt_bboxes;
 
-    int false_positives=0, trackedRegions = 0;
-    vector<double> motp(heads.size());
+    return gt_heads;
+}
 
-    // iterates on tracked regions first in order to count the number of false positives
+/**
+ * @brief computeOverlap : computes overlapping between regions of interest
+ * @param r1 : input ROI 1
+ * @param r2 : input ROI 2
+ * @return : overlapping percentage between the 2 ROI
+ */
+double computeOverlap(const Rect & r1, const Rect & r2)
+{
+    int x_overlap = max(0, min(r1.x+r1.width, r2.x+r2.width) - max(r1.x, r2.x));
+    int y_overlap = max(0, min(r1.y+r1.height, r2.y+r2.height) - max(r1.y, r2.y));
+    int overlap_area = x_overlap * y_overlap;
+    int total_area = (r1.width*r1.height) + (r2.width*r2.height) - overlap_area;
+
+    double overlapping = overlap_area / (double)total_area;
+    return overlapping;
+}
+
+/**
+ * @brief computeTPFP : computes the number of true positives and false positives
+ * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
+ * @param gt_heads : input vector of ground truth "head" structures
+ * @param fp : output number of false positives
+ * @param pairs : output vector of pairs between GT and algorithm tracks
+ * @return : number of true positives
+ */
+int computeTPFP(const vector<head> & heads, const vector<head> & gt_heads, int * fp, vector<pair<int, int> > * pairs)
+{
+    int true_positives=0;
     for(int i=0; i < heads.size(); i++)
     {
-        for(int j=0; j < heads[i].bboxes.size(); j++)
+        bool flag = false;
+        for(int j = 0; j < gt_heads.size(); j++)
         {
-            bool flag = false;
-            trackedRegions++;
-            int x1_tl = heads[i].bboxes[j].x;
-            int y1_tl = heads[i].bboxes[j].y;
-            int x1_br = heads[i].bboxes[j].x + heads[i].bboxes[j].width;
-            int y1_br = heads[i].bboxes[j].y + heads[i].bboxes[j].height;
-            int area_1 = heads[i].bboxes[j].width * heads[i].bboxes[j].height;
-
-            double min_dist = 65656565;
-            for(int k=0; k < gt_bboxes.size(); k++)
+            int temporal_coherence = 0;
+            double spatial_overlap = 0;
+            for(int k=0; k < heads[i].numFrame.size(); k++)
             {
-                if(heads[i].numFrame[j] != frame_number_gt[k])
-                    continue;
-
-                int x2_tl = gt_bboxes[k].x;
-                int y2_tl = gt_bboxes[k].y;
-                int x2_br = gt_bboxes[k].x + gt_bboxes[k].width;
-                int y2_br = gt_bboxes[k].y + gt_bboxes[k].height;
-                int area_2 = gt_bboxes[k].width * gt_bboxes[k].height;
-
-                // calculates jaccard coefficient between tracked area and gt area
-                int x_overlap = max(0, min(x1_br, x2_br) - max(x1_tl, x2_tl));
-                int y_overlap = max(0, min(y1_br, y2_br) - max(y1_tl, y2_tl));
-                int overlap_area = x_overlap * y_overlap;
-                int total_area = area_1 + area_2 - overlap_area;
-                // if there is an overlapping then we can calculate the metrics
-                if(overlap_area / (float) total_area > 0.3)
+                for(int l=0; l < gt_heads[j].numFrame.size(); l++)
                 {
-                    // distance between centroids :
-                    double distance = sqrt(pow(gt_centroids[k].x - heads[i].centroids[j].x, 2) + pow(gt_centroids[k].y - heads[i].centroids[j].y, 2));
-                    if(min_dist > distance)
-                        min_dist = distance;
-                    flag = true;
+                    if(heads[i].numFrame[k] == gt_heads[j].numFrame[l])
+                    {
+                        temporal_coherence++;
+                        spatial_overlap += computeOverlap(heads[i].bboxes[k], gt_heads[j].bboxes[l]);
+                    }
                 }
             }
-            if(!flag)
-                false_positives++;
-            else
-                motp[i] += min_dist;
-        }
-        motp[i] = motp[i] / heads[i].bboxes.size();
-    }
+            if(temporal_coherence == 0)
+                continue;
 
-    int misses = 0;
-    //iterates on gt_bboxes first in order to count the missed regions
-    for(int i=0; i < gt_bboxes.size(); i++)
+            spatial_overlap = spatial_overlap / (double) temporal_coherence;
+            if(temporal_coherence > 0.15 * gt_heads[j].numFrame.size() && spatial_overlap > 0.15)
+            {
+                true_positives++;
+                pairs->push_back(std::pair<int, int> (i, j));
+                flag = true;
+                break;
+            }
+        }
+        if(! flag)
+            (*fp) = (*fp)+1;
+    }
+    return true_positives;
+}
+
+
+/**
+ * @brief computeFN : computes the number of false negatives
+ * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
+ * @param gt_heads : input vector of ground truth "head" structures
+ * @return : number of false negatives
+ */
+int computeFN(const vector<head> & heads, const vector<head> & gt_heads)
+{
+    int false_negatives=0;
+    for(int i=0; i < gt_heads.size(); i++)
     {
         bool flag = false;
-        int x1_tl = gt_bboxes[i].x;
-        int y1_tl = gt_bboxes[i].y;
-        int x1_br = gt_bboxes[i].x + gt_bboxes[i].width;
-        int y1_br = gt_bboxes[i].y + gt_bboxes[i].height;
-        int area_1 = gt_bboxes[i].width * gt_bboxes[i].height;
         for(int j = 0; j < heads.size(); j++)
         {
-            for(int k = 0; k < heads[j].bboxes.size(); k++)
+            int temporal_coherence = 0;
+            double spatial_overlap = 0;
+            for(int k=0; k < gt_heads[i].numFrame.size(); k++)
             {
-                if(heads[j].numFrame[k] != frame_number_gt[i])
-                    continue;
-
-                int x2_tl = heads[j].bboxes[k].x;
-                int y2_tl = heads[j].bboxes[k].y;
-                int x2_br = heads[j].bboxes[k].x + heads[j].bboxes[k].width;
-                int y2_br = heads[j].bboxes[k].y + heads[j].bboxes[k].height;
-                int area_2 = heads[j].bboxes[k].width * heads[j].bboxes[k].height;
-
-                int x_overlap = max(0, min(x1_br, x2_br) - max(x1_tl, x2_tl));
-                int y_overlap = max(0, min(y1_br, y2_br) - max(y1_tl, y2_tl));
-                int overlap_area = x_overlap * y_overlap;
-                int total_area = area_1 + area_2 - overlap_area;
-
-                if(overlap_area / (float) total_area > 0.05)
+                for(int l=0; l < heads[j].numFrame.size(); l++)
                 {
-                    flag = true;
-                    break;
+                    if(heads[j].numFrame[l] == gt_heads[i].numFrame[k])
+                    {
+                        temporal_coherence++;
+                        spatial_overlap += computeOverlap(heads[j].bboxes[l], gt_heads[i].bboxes[k]);
+                    }
                 }
             }
-            if(flag)
+            if(temporal_coherence == 0)
+                continue;
+
+
+            spatial_overlap = spatial_overlap / (double) temporal_coherence;
+            if(temporal_coherence > 0.15 * gt_heads[j].numFrame.size() && spatial_overlap > 0.15)
+            {
+                flag = true;
                 break;
+            }
         }
         if(!flag)
-            misses++;
+            false_negatives++;
+    }
+    return false_negatives;
+}
+
+/**
+ * @brief computeCloseness : compute the closeness between pairs of algorithm and GT tracks
+ * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
+ * @param gt_heads : input vector of ground truth "head" structures
+ * @param pairs : input vector of pairs between GT and algorithm tracks
+ * @param closenessDeviation : output closeness deviation from the mean closeness
+ * @return : closeness value for all pairs of tracks
+ */
+double computeCloseness(const vector<head> & heads, const vector<head> & gt_heads, const vector<pair<int, int> > & pairs, double * closenessDeviation)
+{
+    vector<double> sum_closeness_vec(pairs.size());
+    vector<vector<double> > deviation_vec(pairs.size());
+    vector<double> mean_vec(pairs.size());
+
+    for(int i=0; i < pairs.size(); i++)
+    {
+        int temporal_coherence = 0;
+        for(int j=0; j < heads[pairs[i].first].numFrame.size(); j++)
+        {
+            for(int k=0; k < gt_heads[pairs[i].second].numFrame.size(); k++)
+            {
+                if(gt_heads[pairs[i].second].numFrame[k] == heads[pairs[i].first].numFrame[j])
+                {
+                    sum_closeness_vec[i] += computeOverlap(heads[pairs[i].first].bboxes[j], gt_heads[pairs[i].second].bboxes[k]);
+                    deviation_vec[i].push_back(computeOverlap(heads[pairs[i].first].bboxes[j], gt_heads[pairs[i].second].bboxes[k]));
+                    temporal_coherence++;
+                }
+            }
+        }
+        // mean overlapping for this tracks pair
+        mean_vec[i] = sum_closeness_vec[i] / (double)temporal_coherence;
     }
 
-    //calculates the mean distance error
-    double mean_motp = 0;
-    for(int i=0; i < motp.size(); i++)
-        mean_motp += motp[i];
+    // sums all overlapping for all track pairs
+    double overall_overlapping_sum=0;
+    for(int i=0; i < sum_closeness_vec.size(); i++)
+        overall_overlapping_sum+= sum_closeness_vec[i];
 
-    mean_motp = mean_motp / motp.size();
+    // sums products between all overlapping of one track pair and track mean overlapping. Do that for all track pairs
+    double product=0;
+    for(int i=0; i < deviation_vec.size(); i++)
+        for(int j=0; j < deviation_vec[i].size(); j++)
+            product+= deviation_vec[i][j]*mean_vec[i];
 
-    cout << "number of heads detected : " << heads.size() << endl;
-    cout << "number of GT heads : " << gt_heads << endl;
-    cout << "number of tracked regions : " << trackedRegions << endl;
-    cout << "number of gt regions : " << gt_bboxes.size() << endl;
-    cout << "number of false positives : " << false_positives << endl;
-    cout << "missrate : " << misses / (double) gt_bboxes.size() << endl;
-    cout << "motp : " << mean_motp << endl;
+    double closeness = product / overall_overlapping_sum;
 
+
+    // sums all square variance for each tracks pair
+    vector<double> deviation_vec2(pairs.size());
+    for(int i=0; i < deviation_vec.size(); i++)
+        for(int j=0; j < deviation_vec[i].size(); j++)
+            deviation_vec2[i] += pow(deviation_vec[i][j] - mean_vec[i], 2);
+
+    //calculates weighted deviation for each tracks pair
+    for(int i=0; i < deviation_vec2.size(); i++)
+    {
+        deviation_vec2[i] = deviation_vec2[i] / (deviation_vec[i].size()-1);
+        deviation_vec2[i] = sqrt(deviation_vec2[i]);
+    }
+
+    // calculates closeness weighted standard deviation
+    double sum_closeness_dev = 0;
+    for(int i=0; i < deviation_vec.size(); i++)
+    {
+        for(int j=0; j < deviation_vec[i].size(); j++)
+            sum_closeness_dev += deviation_vec[i][j] * deviation_vec2[i];
+    }
+    (*closenessDeviation) = sum_closeness_dev / overall_overlapping_sum;
+
+    return closeness;
+}
+
+/**
+ * @brief computeLatency : compute the latency for all tracks that matches a GT track
+ * @param heads : input vector of "head" structures coming from the CSV file, output of the algorithm to evaluate
+ * @param gt_heads : input vector of ground truth "head" structures
+ * @param pairs : input vector of pairs between GT and algorithm tracks
+ * @return : number of frame latency between beginning of GT track and earlieast beginning of algorithm track
+ */
+int computeLatency(vector<head> heads, vector<head> gt_heads, vector<pair<int, int> > pairs)
+{
+    int latency = 0;
+    for(int i=0; i < pairs.size(); i++)
+    {
+        int min_latency = 65535;
+        bool flag = false;
+        // check if there is more than one track associated with a GT track (second element of the pair)
+        for(int j=0; j < pairs.size(); j++)
+        {
+            if(i==j)
+                continue;
+
+            // if multiple tracks are associated with the same GT track we use the one that generates the minimal latency
+            if(pairs[i].second == pairs[j].second)
+            {
+                int mini = min(heads[pairs[i].first].numFrame[0] - gt_heads[pairs[i].second].numFrame[0],
+                           heads[pairs[j].first].numFrame[0] - gt_heads[pairs[j].second].numFrame[0]);
+                if(mini < min_latency)
+                    min_latency = mini;
+                flag = true;
+            }
+        }
+        if(flag)
+            latency += min_latency;
+        else
+            latency += heads[pairs[i].first].numFrame[0] - gt_heads[pairs[i].second].numFrame[0];
+    }
+
+    // not sure that ponderate by number of ground truth tracks is meaningful
+    latency = latency / gt_heads.size();
+    return latency;
+}
+
+
+int main( int argc, char** argv )
+{
+    if(argc != 3)
+    {
+        cout << "Need 2 arguments : " << endl;
+        cout << "\t 1. Path to csv file containing tracks" << endl;
+        cout << "\t 2. Path to ground truth file " << endl;
+        exit(-1);
+    }
+
+    vector<head> heads = readResults(argv[1]);
+    vector<head> gt_heads = readGT(argv[2]);
+
+    int false_positives = 0;
+    vector<pair<int, int> > pairs;
+    int true_positives = computeTPFP(heads, gt_heads, &false_positives, &pairs);
+    int false_negatives = computeFN(heads, gt_heads);
+    double closenessDeviation = 0;
+    double closeness = computeCloseness(heads, gt_heads, pairs, &closenessDeviation);
+    int latency = computeLatency(heads, gt_heads, pairs);
+
+    cout << "true_positives = " << true_positives << endl;
+    cout << "false_positives = " << false_positives << endl;
+    cout << "false_negatives = " << false_negatives << endl;
+    cout << "closeness = " << closeness << endl;
+    cout << "closeness deviation = " << closenessDeviation << endl;
+    cout << "latency = " << latency << endl;
 
 }
