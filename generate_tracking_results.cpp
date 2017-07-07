@@ -1,3 +1,10 @@
+/*!
+ * \file generate_tracking_results.cpp
+ * \brief Standalone script to generate metrics for tracking performance evaluation
+ * \version 1.0
+ */
+
+
 // Standard
 #include <iostream>
 #include <fstream>

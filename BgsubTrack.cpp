@@ -20,7 +20,8 @@
 #include "BgsubTrack.hpp"
 
 //#define VIZ 1
-//#define RES 1
+#define TRK_RES 1
+//#define DET_RES 1
 
 using namespace std;
 using namespace cv;
@@ -663,8 +664,8 @@ int main( int argc, char** argv )
         listFrames.push_back(frame.clone());
 
         //Applies background subtraction for the current frame and update weights of each pixel
-        //bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
         Mat diff_mask;
+        //bst.bgsub->apply(frame, diff_mask); // BOSS dataset : add learning rate 0.001
         if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
         {
             absdiff(previousFrame, currentFrame, diff_mask);
@@ -677,8 +678,8 @@ int main( int argc, char** argv )
         vector<cv::Vec4i> hierarchy;
 
         // binarizes image to extract contours
-        //Mat opened;
-        //threshold(fgmask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
+        //Mat opened, thresholded;
+        //threshold(diff_mask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
         //Applies opening on the binarized image to remove small artefacts and to try to split regions that should not be linked (shadows etc)
         //morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
         //findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
@@ -736,7 +737,7 @@ int main( int argc, char** argv )
                                       (*outputROI)[j].width, (*outputROI)[j].height);
                     posDetections.push_back(dt(accurateRect, conf.at<float>(0,0)));
 
-#ifdef RES
+#ifdef DET_RES
                     //Ouput detections results (CSV format)
                     cout << nbFrame << ", 1, " << accurateRect.x << ", " << accurateRect.y << ", " << accurateRect.width << ", " << accurateRect.height << endl;
 #endif
@@ -749,7 +750,7 @@ int main( int argc, char** argv )
                     rectangle(true_detections, accurateRect, Scalar(0, 0, 255));
 #endif
                 }
-#ifdef RES
+#ifdef DET_RES
                 else
                     cout << nbFrame << ", 0, " << (*outputROI)[j].x + boundingLocations[i].x << ", " << (*outputROI)[j].y + boundingLocations[i].y
                          << (*outputROI)[j].width << ", " << (*outputROI)[j].height << endl;
@@ -800,13 +801,15 @@ int main( int argc, char** argv )
         nbFrame++;
     }
 
+#ifdef VIZ
     destroyAllWindows();
-    vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
-    bst.replayTracks(argv[1], fusedTrackers);
-    //bst.replayTracks(argv[1], significantTrackers);
+    //vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
+    //bst.replayTracks(argv[1], fusedTrackers);
+    bst.replayTracks(argv[1], significantTrackers);
+#endif
 
 
-#ifdef RES
+#ifdef TRK_RES
     // ouput tracking results (CSV format)
     for(int i=0; i < significantTrackers.size(); i++)
     {

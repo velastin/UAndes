@@ -4,7 +4,7 @@ using namespace cv;
 using namespace std;
 
 
-TrainSVM::TrainSVM(float C, const Size & winSize, const Size & blockSize, const Size & blockStride, const Size & cellSize, int nBins)
+TrainSVM::TrainSVM(const float & C, const Size & winSize, const Size & blockSize, const Size & blockStride, const Size & cellSize, int nBins)
 {
     this->svm = ml::SVM::create();
     this->svm->setType(ml::SVM::C_SVC); // binary classifier

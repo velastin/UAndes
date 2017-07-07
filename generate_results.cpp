@@ -1,3 +1,9 @@
+/*!
+ * \file generate_results.cpp
+ * \brief Standalone script to generate metrics for detection perfomance evaluation
+ * \version 1.0
+ */
+
 // Standard
 #include <iostream>
 #include <fstream>
@@ -8,6 +14,7 @@
 
 using namespace std;
 using namespace cv;
+
 int main( int argc, char** argv )
 {
     ifstream csv(argv[1], ios::in);

@@ -1,6 +1,6 @@
 /*!
  * \file BgsubTrack.hpp
- * \brief BgsubTrack class to apply background subtraction and select blobs
+ * \brief BgsubTrack class to apply background subtraction, select blobs and track pedestrians
  * \version 1.0
  */
 
@@ -93,8 +93,8 @@ public:
 
     /**
      * @brief BgsubTrack : constructor
-     * @param hogD : hog descriptor object used to train the classifier
-     * @param gaussMix : pointer to a background subtractor object
+     * @param hogD : input hog descriptor object used to train the classifier
+     * @param gaussMix : input pointer to a background subtractor object
      */
     BgsubTrack(const cv::HOGDescriptor & hogD, const cv::Ptr<cv::BackgroundSubtractor> & gaussMix);
 
@@ -102,9 +102,9 @@ public:
      * @brief addNewTrackers : instanciate a new tracker for each detection that does not overlap and existing tracked region
      * @param posDetections : input new blob detections in the current frame
      * @param trackerList : input/output vector of trackers
-     * @param frame : current frame
-     * @param nframe : number of the current frame
-     * @param id : current id available for new trackers
+     * @param frame : input current frame
+     * @param nframe : input number of the current frame
+     * @param id : input / output current id available for new trackers
      */
     void addNewTrackers(const std::vector<dt> & posDetections, std::vector<colorHistTracker> * trackerList, const cv::Mat & frame, const int & nframe, int * id);
 
@@ -119,7 +119,7 @@ public:
      * @param rectangles : input vector of rectangles extracted from blob detection
      * @param regions : output vector of selected small images
      * @param boundingLocations : output vector of rectangles. Each rectangle is equivalent to the region at same index in "regions" vector
-     * @param frame : frame from which were extracted the rectangles
+     * @param frame : input frame from which were extracted the rectangles
      */
     void roiSelection(const std::vector<cv::RotatedRect> & rectangles, std::vector<cv::Mat> * regions, std::vector<cv::Rect2d> * boundingLocations,
                       const cv::Mat & frame);
@@ -143,7 +143,7 @@ public:
     /**
      * @brief initFilter : instanciate a Kalman filter with hard coded parameters
      * @param boundingBox : input measure of spatial location of the object to track
-     * @param nbFrame : numero of the frame in which the object to tracker was detected
+     * @param nbFrame : input number of the frame in which the object to tracker was detected
      * @return : intialized Kalman filter
      */
     klmFilter initFilter(const cv::Rect & boundingBox, const int & nbFrame);
@@ -167,7 +167,7 @@ public:
      * @param b_hist : output blue histogram of the roi
      * @param g_hist : output green histogram of the roi
      * @param r_hist : output red histogram of the roi
-     * @param histogram : reference histogram
+     * @param histogram : input reference histogram
      * @return : distance using Hellinger histogram comparison
      */
     double getHistDistance(const cv::Mat & roi, cv::Mat * b_hist, cv::Mat * g_hist, cv::Mat * r_hist, std::vector<cv::Mat> histogram);
@@ -175,8 +175,8 @@ public:
 
     /**
      * @brief replayTracks : display retained tracks
-     * @param videoPath : path to the source video
-     * @param significantTrackers : list of retained trackers
+     * @param videoPath : input path to the source video
+     * @param significantTrackers : input list of retained trackers
      */
     void replayTracks(const std::string &videoPath, const std::vector<colorHistTracker> & significantTrackers);
 
