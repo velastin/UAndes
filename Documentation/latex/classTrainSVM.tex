@@ -1,0 +1,172 @@
+\hypertarget{classTrainSVM}{}\section{Train\+S\+VM Class Reference}
+\label{classTrainSVM}\index{Train\+S\+VM@{Train\+S\+VM}}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classTrainSVM_a29ecf4d6835625f07df523abd235ec62}{Train\+S\+VM} (const float \&C, const cv\+::\+Size \&win\+Size, const cv\+::\+Size \&block\+Size, const cv\+::\+Size \&block\+Stride, const cv\+::\+Size \&cell\+Size, int n\+Bins)
+\begin{DoxyCompactList}\small\item\em \hyperlink{classTrainSVM}{Train\+S\+VM} \+: Constructor. \end{DoxyCompactList}\item 
+void \hyperlink{classTrainSVM_a2b66a0fa34c717c85635641ba3fe33e5}{read\+Samples} (const std\+::string \&pos\+Path, const std\+::string \&neg\+Path, std\+::vector$<$ std\+::string $>$ $\ast$pos\+File\+Names, std\+::vector$<$ std\+::string $>$ $\ast$neg\+File\+Names)
+\begin{DoxyCompactList}\small\item\em read\+Samples \+: reads positive and negative samples \end{DoxyCompactList}\item 
+void \hyperlink{classTrainSVM_ae277ff97d95ad406edd9986f41d4342e}{describe} (std\+::vector$<$ std\+::string $>$ $\ast$pos\+File\+Names, std\+::vector$<$ std\+::string $>$ $\ast$neg\+File\+Names, std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$descriptors, std\+::vector$<$ int $>$ $\ast$labels, bool rsz=false, const cv\+::\+Size \&new\+Size=cv\+::\+Size(0, 0))
+\begin{DoxyCompactList}\small\item\em describe \+: applies description of files given \end{DoxyCompactList}\item 
+void \hyperlink{classTrainSVM_ab615a62534f0d846db008cf93f71f292}{fit} (std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$descriptors, std\+::vector$<$ int $>$ $\ast$labels, const std\+::string \&out\+Path)
+\begin{DoxyCompactList}\small\item\em fit \+: trains the classifier to find the best hyperplane and save it \end{DoxyCompactList}\item 
+void \hyperlink{classTrainSVM_a77bc72a25234df769250b7389a3778ab}{test\+Model} (std\+::vector$<$ std\+::string $>$ $\ast$pos\+Test\+File\+Names, std\+::vector$<$ std\+::string $>$ $\ast$neg\+Test\+File\+Names, const cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+VM $>$ \&model, std\+::vector$<$ int $>$ $\ast$hard\+Labels, std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$hard\+Descriptors)
+\begin{DoxyCompactList}\small\item\em \hyperlink{classTrainSVM_a77bc72a25234df769250b7389a3778ab}{Train\+S\+V\+M\+::test\+Model} \+: tests a trained model a calculate its precision and recall on a test set. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+VM $>$ {\bfseries svm}\hypertarget{classTrainSVM_a3b0f3fd57ce484543015573966314368}{}\label{classTrainSVM_a3b0f3fd57ce484543015573966314368}
+
+\item 
+cv\+::\+H\+O\+G\+Descriptor {\bfseries hog}\hypertarget{classTrainSVM_a24b64b7d18df6680dfd7fed2246fdab1}{}\label{classTrainSVM_a24b64b7d18df6680dfd7fed2246fdab1}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Constructor \& Destructor Documentation}
+\index{Train\+S\+VM@{Train\+S\+VM}!Train\+S\+VM@{Train\+S\+VM}}
+\index{Train\+S\+VM@{Train\+S\+VM}!Train\+S\+VM@{Train\+S\+VM}}
+\subsubsection[{\texorpdfstring{Train\+S\+V\+M(const float \&\+C, const cv\+::\+Size \&win\+Size, const cv\+::\+Size \&block\+Size, const cv\+::\+Size \&block\+Stride, const cv\+::\+Size \&cell\+Size, int n\+Bins)}{TrainSVM(const float &C, const cv::Size &winSize, const cv::Size &blockSize, const cv::Size &blockStride, const cv::Size &cellSize, int nBins)}}]{\setlength{\rightskip}{0pt plus 5cm}Train\+S\+V\+M\+::\+Train\+S\+VM (
+\begin{DoxyParamCaption}
+\item[{const float \&}]{C, }
+\item[{const cv\+::\+Size \&}]{win\+Size, }
+\item[{const cv\+::\+Size \&}]{block\+Size, }
+\item[{const cv\+::\+Size \&}]{block\+Stride, }
+\item[{const cv\+::\+Size \&}]{cell\+Size, }
+\item[{int}]{n\+Bins}
+\end{DoxyParamCaption}
+)}\hypertarget{classTrainSVM_a29ecf4d6835625f07df523abd235ec62}{}\label{classTrainSVM_a29ecf4d6835625f07df523abd235ec62}
+
+
+\hyperlink{classTrainSVM}{Train\+S\+VM} \+: Constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em C} & \+: input C parameter of the linear classifier \\
+\hline
+{\em win\+Size} & \+: input window size for the hog descriptor \\
+\hline
+{\em block\+Size} & \+: input size of a block in pixel \\
+\hline
+{\em block\+Stride} & \+: input step between two blocks \\
+\hline
+{\em cell\+Size} & \+: input size of cells in pixel \\
+\hline
+{\em n\+Bins} & \+: number of gradient orientations \\
+\hline
+\end{DoxyParams}
+
+
+\subsection{Member Function Documentation}
+\index{Train\+S\+VM@{Train\+S\+VM}!describe@{describe}}
+\index{describe@{describe}!Train\+S\+VM@{Train\+S\+VM}}
+\subsubsection[{\texorpdfstring{describe(std\+::vector$<$ std\+::string $>$ $\ast$pos\+File\+Names, std\+::vector$<$ std\+::string $>$ $\ast$neg\+File\+Names, std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$descriptors, std\+::vector$<$ int $>$ $\ast$labels, bool rsz=false, const cv\+::\+Size \&new\+Size=cv\+::\+Size(0, 0))}{describe(std::vector< std::string > *posFileNames, std::vector< std::string > *negFileNames, std::vector< std::vector< float > > *descriptors, std::vector< int > *labels, bool rsz=false, const cv::Size &newSize=cv::Size(0, 0))}}]{\setlength{\rightskip}{0pt plus 5cm}void Train\+S\+V\+M\+::describe (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ std\+::string $>$ $\ast$}]{pos\+File\+Names, }
+\item[{std\+::vector$<$ std\+::string $>$ $\ast$}]{neg\+File\+Names, }
+\item[{std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$}]{descriptors, }
+\item[{std\+::vector$<$ int $>$ $\ast$}]{labels, }
+\item[{bool}]{rsz = {\ttfamily false}, }
+\item[{const cv\+::\+Size \&}]{new\+Size = {\ttfamily cv\+:\+:Size(0,~0)}}
+\end{DoxyParamCaption}
+)}\hypertarget{classTrainSVM_ae277ff97d95ad406edd9986f41d4342e}{}\label{classTrainSVM_ae277ff97d95ad406edd9986f41d4342e}
+
+
+describe \+: applies description of files given 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos\+File\+Names} & \+: input pointer to a string vector that contains names of positive samples \\
+\hline
+{\em neg\+File\+Names} & \+: input pointer to a string vector that contains names of negative samples \\
+\hline
+{\em descriptors} & \+: output vector of descriptors \\
+\hline
+{\em labels} & \+: output vector of labels \\
+\hline
+{\em resize} & \+: input boolean to decide wether we need to resize the samples (default false) \\
+\hline
+{\em new\+Size} & \+: input new Size we have to use in case of resize=true \\
+\hline
+\end{DoxyParams}
+\index{Train\+S\+VM@{Train\+S\+VM}!fit@{fit}}
+\index{fit@{fit}!Train\+S\+VM@{Train\+S\+VM}}
+\subsubsection[{\texorpdfstring{fit(std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$descriptors, std\+::vector$<$ int $>$ $\ast$labels, const std\+::string \&out\+Path)}{fit(std::vector< std::vector< float > > *descriptors, std::vector< int > *labels, const std::string &outPath)}}]{\setlength{\rightskip}{0pt plus 5cm}void Train\+S\+V\+M\+::fit (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$}]{descriptors, }
+\item[{std\+::vector$<$ int $>$ $\ast$}]{labels, }
+\item[{const std\+::string \&}]{out\+Path}
+\end{DoxyParamCaption}
+)}\hypertarget{classTrainSVM_ab615a62534f0d846db008cf93f71f292}{}\label{classTrainSVM_ab615a62534f0d846db008cf93f71f292}
+
+
+fit \+: trains the classifier to find the best hyperplane and save it 
+
+
+\begin{DoxyParams}{Parameters}
+{\em descriptors} & \+: input pointer to a vector of float descriptors \\
+\hline
+{\em labels} & \+: input pointer to a vector of class labels \\
+\hline
+{\em out\+Path} & \+: input path to save the trained model (must contain the file name) \\
+\hline
+\end{DoxyParams}
+\index{Train\+S\+VM@{Train\+S\+VM}!read\+Samples@{read\+Samples}}
+\index{read\+Samples@{read\+Samples}!Train\+S\+VM@{Train\+S\+VM}}
+\subsubsection[{\texorpdfstring{read\+Samples(const std\+::string \&pos\+Path, const std\+::string \&neg\+Path, std\+::vector$<$ std\+::string $>$ $\ast$pos\+File\+Names, std\+::vector$<$ std\+::string $>$ $\ast$neg\+File\+Names)}{readSamples(const std::string &posPath, const std::string &negPath, std::vector< std::string > *posFileNames, std::vector< std::string > *negFileNames)}}]{\setlength{\rightskip}{0pt plus 5cm}void Train\+S\+V\+M\+::read\+Samples (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{pos\+Path, }
+\item[{const std\+::string \&}]{neg\+Path, }
+\item[{std\+::vector$<$ std\+::string $>$ $\ast$}]{pos\+File\+Names, }
+\item[{std\+::vector$<$ std\+::string $>$ $\ast$}]{neg\+File\+Names}
+\end{DoxyParamCaption}
+)}\hypertarget{classTrainSVM_a2b66a0fa34c717c85635641ba3fe33e5}{}\label{classTrainSVM_a2b66a0fa34c717c85635641ba3fe33e5}
+
+
+read\+Samples \+: reads positive and negative samples 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos\+Path} & \+: input path to positive samples \\
+\hline
+{\em neg\+Path} & \+: input path to negative samples \\
+\hline
+{\em pos\+File\+Names} & \+: output vector of positive file names \\
+\hline
+{\em neg\+File\+Names} & \+: output vector of negative file names \\
+\hline
+\end{DoxyParams}
+\index{Train\+S\+VM@{Train\+S\+VM}!test\+Model@{test\+Model}}
+\index{test\+Model@{test\+Model}!Train\+S\+VM@{Train\+S\+VM}}
+\subsubsection[{\texorpdfstring{test\+Model(std\+::vector$<$ std\+::string $>$ $\ast$pos\+Test\+File\+Names, std\+::vector$<$ std\+::string $>$ $\ast$neg\+Test\+File\+Names, const cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+V\+M $>$ \&model, std\+::vector$<$ int $>$ $\ast$hard\+Labels, std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$hard\+Descriptors)}{testModel(std::vector< std::string > *posTestFileNames, std::vector< std::string > *negTestFileNames, const cv::Ptr< cv::ml::SVM > &model, std::vector< int > *hardLabels, std::vector< std::vector< float > > *hardDescriptors)}}]{\setlength{\rightskip}{0pt plus 5cm}void Train\+S\+V\+M\+::test\+Model (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ std\+::string $>$ $\ast$}]{pos\+Test\+File\+Names, }
+\item[{std\+::vector$<$ std\+::string $>$ $\ast$}]{neg\+Test\+File\+Names, }
+\item[{const cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+VM $>$ \&}]{model, }
+\item[{std\+::vector$<$ int $>$ $\ast$}]{hard\+Labels, }
+\item[{std\+::vector$<$ std\+::vector$<$ float $>$ $>$ $\ast$}]{hard\+Descriptors}
+\end{DoxyParamCaption}
+)}\hypertarget{classTrainSVM_a77bc72a25234df769250b7389a3778ab}{}\label{classTrainSVM_a77bc72a25234df769250b7389a3778ab}
+
+
+\hyperlink{classTrainSVM_a77bc72a25234df769250b7389a3778ab}{Train\+S\+V\+M\+::test\+Model} \+: tests a trained model a calculate its precision and recall on a test set. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos\+Test\+File\+Names} & \+: input vector of positive test files \\
+\hline
+{\em neg\+Test\+File\+Names} & \+: input vector of negative test files \\
+\hline
+{\em model} & \+: input model to be tested \\
+\hline
+{\em hard\+Labels} & \+: output vector of labels used for hard training \\
+\hline
+{\em hard\+Descriptors} & \+: output vector of descriptors used for hard training \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{TrainSVM_8hpp}{Train\+S\+V\+M.\+hpp}\end{DoxyCompactItemize}

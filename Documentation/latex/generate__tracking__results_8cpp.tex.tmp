@@ -1,0 +1,320 @@
+\hypertarget{generate__tracking__results_8cpp}{}\section{generate\+\_\+tracking\+\_\+results.\+cpp File Reference}
+\label{generate__tracking__results_8cpp}\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+
+
+Standalone script to generate metrics for tracking performance evaluation.  
+
+
+{\ttfamily \#include $<$iostream$>$}\\*
+{\ttfamily \#include $<$fstream$>$}\\*
+{\ttfamily \#include $<$string$>$}\\*
+{\ttfamily \#include $<$opencv2/core/utility.\+hpp$>$}\\*
+Include dependency graph for generate\+\_\+tracking\+\_\+results.\+cpp\+:
+% FIG 0
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structhead}{head}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+vector$<$ \hyperlink{structhead}{head} $>$ \hyperlink{generate__tracking__results_8cpp_a5782fe6d53f2d7e11f2d57c6bc194a5d}{read\+Results} (const string \&path)
+\begin{DoxyCompactList}\small\item\em read\+Results \+: read C\+SV file of generated results \end{DoxyCompactList}\item 
+vector$<$ \hyperlink{structhead}{head} $>$ \hyperlink{generate__tracking__results_8cpp_a1c15bd403662b8169a5d10a7d33597fd}{read\+GT} (const string \&path)
+\begin{DoxyCompactList}\small\item\em read\+GT \+: read the ground truth file (Viper xml format) \end{DoxyCompactList}\item 
+double \hyperlink{generate__tracking__results_8cpp_a616d0682223add60749889d1a88d092d}{compute\+Overlap} (const Rect \&r1, const Rect \&r2)
+\begin{DoxyCompactList}\small\item\em compute\+Overlap \+: computes overlapping between regions of interest \end{DoxyCompactList}\item 
+int \hyperlink{generate__tracking__results_8cpp_a2f2ac9bcd499a1fecd1f1b455aad03a2}{compute\+T\+P\+FP} (const vector$<$ \hyperlink{structhead}{head} $>$ \&heads, const vector$<$ \hyperlink{structhead}{head} $>$ \&gt\+\_\+heads, int $\ast$fp, vector$<$ pair$<$ int, int $>$ $>$ $\ast$pairs)
+\begin{DoxyCompactList}\small\item\em compute\+T\+P\+FP \+: computes the number of True Positives (TP) and False Positives (FP) \end{DoxyCompactList}\item 
+int \hyperlink{generate__tracking__results_8cpp_a973916eb10cfc322362b6fd649b7d181}{compute\+FN} (const vector$<$ \hyperlink{structhead}{head} $>$ \&heads, const vector$<$ \hyperlink{structhead}{head} $>$ \&gt\+\_\+heads)
+\begin{DoxyCompactList}\small\item\em compute\+FN \+: computes the number of False Negatives (FN) \end{DoxyCompactList}\item 
+double \hyperlink{generate__tracking__results_8cpp_a4309a0c710b874217b0ba4f3aa5f0cfa}{compute\+Closeness} (const vector$<$ \hyperlink{structhead}{head} $>$ \&heads, const vector$<$ \hyperlink{structhead}{head} $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs, double $\ast$closeness\+Deviation)
+\begin{DoxyCompactList}\small\item\em compute\+Closeness \+: compute the closeness between pairs of algorithm and GT tracks and the corresponding standard deviation \end{DoxyCompactList}\item 
+int \hyperlink{generate__tracking__results_8cpp_aa5db09fc88ba4835aab41031dfe0b2a3}{compute\+Latency} (const vector$<$ \hyperlink{structhead}{head} $>$ \&heads, const vector$<$ \hyperlink{structhead}{head} $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs)
+\begin{DoxyCompactList}\small\item\em compute\+Latency \+: compute the latency for all tracks that matches a GT track \end{DoxyCompactList}\item 
+double \hyperlink{generate__tracking__results_8cpp_aa90345c4c0c5d671f90a3ccff5295ccf}{compute\+T\+DE} (const vector$<$ \hyperlink{structhead}{head} $>$ \&heads, const vector$<$ \hyperlink{structhead}{head} $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs, double $\ast$standard\+Deviation)
+\begin{DoxyCompactList}\small\item\em compute\+T\+DE \+: computes the Track Distance Error (T\+DE) and the corresponding standard deviation \end{DoxyCompactList}\item 
+int \hyperlink{generate__tracking__results_8cpp_ad377beee53a7f628a2b7c37539c62fe8}{compute\+Fragmentation} (const vector$<$ pair$<$ int, int $>$ $>$ \&pairs)
+\begin{DoxyCompactList}\small\item\em compute\+Fragmentation \+: compute the number of track fragmentations for all tracks \end{DoxyCompactList}\item 
+int \hyperlink{generate__tracking__results_8cpp_a8ee77be7124ddf3056708bda68b8cc32}{compute\+I\+DC} (const vector$<$ pair$<$ int, int $>$ $>$ \&pairs)
+\begin{DoxyCompactList}\small\item\em compute\+I\+DC \+: computes the number of ID changes for all system tracks \end{DoxyCompactList}\item 
+double \hyperlink{generate__tracking__results_8cpp_a97a29e6b98be7c9ed5111419facfb56e}{compute\+Completeness} (const vector$<$ \hyperlink{structhead}{head} $>$ \&heads, const vector$<$ \hyperlink{structhead}{head} $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs, double $\ast$standard\+Deviation)
+\begin{DoxyCompactList}\small\item\em compute\+Completeness \+: computes the overall completeness of system tracks and the associated standard deviation \end{DoxyCompactList}\item 
+int {\bfseries main} (int argc, char $\ast$$\ast$argv)\hypertarget{generate__tracking__results_8cpp_a3c04138a5bfe5d72780bb7e82a18e627}{}\label{generate__tracking__results_8cpp_a3c04138a5bfe5d72780bb7e82a18e627}
+
+\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structhead}{head} {\bfseries head}\hypertarget{generate__tracking__results_8cpp_ae5c9aafe654b2efc5866335e1e68bb83}{}\label{generate__tracking__results_8cpp_ae5c9aafe654b2efc5866335e1e68bb83}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Standalone script to generate metrics for tracking performance evaluation. 
+
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+
+
+\subsection{Function Documentation}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+Closeness@{compute\+Closeness}}
+\index{compute\+Closeness@{compute\+Closeness}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+Closeness(const vector$<$ head $>$ \&heads, const vector$<$ head $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs, double $\ast$closeness\+Deviation)}{computeCloseness(const vector< head > &heads, const vector< head > &gt_heads, const vector< pair< int, int > > &pairs, double *closenessDeviation)}}]{\setlength{\rightskip}{0pt plus 5cm}double compute\+Closeness (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ {\bf head} $>$ \&}]{heads, }
+\item[{const vector$<$ {\bf head} $>$ \&}]{gt\+\_\+heads, }
+\item[{const vector$<$ pair$<$ int, int $>$ $>$ \&}]{pairs, }
+\item[{double $\ast$}]{closeness\+Deviation}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a4309a0c710b874217b0ba4f3aa5f0cfa}{}\label{generate__tracking__results_8cpp_a4309a0c710b874217b0ba4f3aa5f0cfa}
+
+
+compute\+Closeness \+: compute the closeness between pairs of algorithm and GT tracks and the corresponding standard deviation 
+
+
+\begin{DoxyParams}{Parameters}
+{\em heads} & \+: input vector of \char`\"{}head\char`\"{} structures coming from the C\+SV file, output of the algorithm to evaluate \\
+\hline
+{\em gt\+\_\+heads} & \+: input vector of ground truth \char`\"{}head\char`\"{} structures \\
+\hline
+{\em pairs} & \+: input vector of pairs between GT and algorithm tracks \\
+\hline
+{\em closeness\+Deviation} & \+: output closeness deviation from the mean closeness \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: closeness value for all pairs of tracks 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+Completeness@{compute\+Completeness}}
+\index{compute\+Completeness@{compute\+Completeness}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+Completeness(const vector$<$ head $>$ \&heads, const vector$<$ head $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs, double $\ast$standard\+Deviation)}{computeCompleteness(const vector< head > &heads, const vector< head > &gt_heads, const vector< pair< int, int > > &pairs, double *standardDeviation)}}]{\setlength{\rightskip}{0pt plus 5cm}double compute\+Completeness (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ {\bf head} $>$ \&}]{heads, }
+\item[{const vector$<$ {\bf head} $>$ \&}]{gt\+\_\+heads, }
+\item[{const vector$<$ pair$<$ int, int $>$ $>$ \&}]{pairs, }
+\item[{double $\ast$}]{standard\+Deviation}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a97a29e6b98be7c9ed5111419facfb56e}{}\label{generate__tracking__results_8cpp_a97a29e6b98be7c9ed5111419facfb56e}
+
+
+compute\+Completeness \+: computes the overall completeness of system tracks and the associated standard deviation 
+
+
+\begin{DoxyParams}{Parameters}
+{\em heads} & \+: input vector of \char`\"{}head\char`\"{} structures coming from the C\+SV file, output of the algorithm to evaluate \\
+\hline
+{\em gt\+\_\+heads} & \+: input vector of ground truth \char`\"{}head\char`\"{} structures \\
+\hline
+{\em pairs} & \+: input vector of pairs between GT and algorithm tracks \\
+\hline
+{\em standard\+Deviation} & \+: output standard deviation of the track completeness \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: track completeness value 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+FN@{compute\+FN}}
+\index{compute\+FN@{compute\+FN}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+F\+N(const vector$<$ head $>$ \&heads, const vector$<$ head $>$ \&gt\+\_\+heads)}{computeFN(const vector< head > &heads, const vector< head > &gt_heads)}}]{\setlength{\rightskip}{0pt plus 5cm}int compute\+FN (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ {\bf head} $>$ \&}]{heads, }
+\item[{const vector$<$ {\bf head} $>$ \&}]{gt\+\_\+heads}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a973916eb10cfc322362b6fd649b7d181}{}\label{generate__tracking__results_8cpp_a973916eb10cfc322362b6fd649b7d181}
+
+
+compute\+FN \+: computes the number of False Negatives (FN) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em heads} & \+: input vector of \char`\"{}head\char`\"{} structures coming from the C\+SV file, output of the algorithm to evaluate \\
+\hline
+{\em gt\+\_\+heads} & \+: input vector of ground truth \char`\"{}head\char`\"{} structures \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: number of false negatives 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+Fragmentation@{compute\+Fragmentation}}
+\index{compute\+Fragmentation@{compute\+Fragmentation}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+Fragmentation(const vector$<$ pair$<$ int, int $>$ $>$ \&pairs)}{computeFragmentation(const vector< pair< int, int > > &pairs)}}]{\setlength{\rightskip}{0pt plus 5cm}int compute\+Fragmentation (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ pair$<$ int, int $>$ $>$ \&}]{pairs}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_ad377beee53a7f628a2b7c37539c62fe8}{}\label{generate__tracking__results_8cpp_ad377beee53a7f628a2b7c37539c62fe8}
+
+
+compute\+Fragmentation \+: compute the number of track fragmentations for all tracks 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pairs} & \+: input vector of pairs between GT and algorithm tracks \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: number of track fragmentations 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+I\+DC@{compute\+I\+DC}}
+\index{compute\+I\+DC@{compute\+I\+DC}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+I\+D\+C(const vector$<$ pair$<$ int, int $>$ $>$ \&pairs)}{computeIDC(const vector< pair< int, int > > &pairs)}}]{\setlength{\rightskip}{0pt plus 5cm}int compute\+I\+DC (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ pair$<$ int, int $>$ $>$ \&}]{pairs}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a8ee77be7124ddf3056708bda68b8cc32}{}\label{generate__tracking__results_8cpp_a8ee77be7124ddf3056708bda68b8cc32}
+
+
+compute\+I\+DC \+: computes the number of ID changes for all system tracks 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pairs} & \+: input vector of pairs between GT and algorithm tracks \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: number of ID changes 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+Latency@{compute\+Latency}}
+\index{compute\+Latency@{compute\+Latency}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+Latency(const vector$<$ head $>$ \&heads, const vector$<$ head $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs)}{computeLatency(const vector< head > &heads, const vector< head > &gt_heads, const vector< pair< int, int > > &pairs)}}]{\setlength{\rightskip}{0pt plus 5cm}int compute\+Latency (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ {\bf head} $>$ \&}]{heads, }
+\item[{const vector$<$ {\bf head} $>$ \&}]{gt\+\_\+heads, }
+\item[{const vector$<$ pair$<$ int, int $>$ $>$ \&}]{pairs}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_aa5db09fc88ba4835aab41031dfe0b2a3}{}\label{generate__tracking__results_8cpp_aa5db09fc88ba4835aab41031dfe0b2a3}
+
+
+compute\+Latency \+: compute the latency for all tracks that matches a GT track 
+
+
+\begin{DoxyParams}{Parameters}
+{\em heads} & \+: input vector of \char`\"{}head\char`\"{} structures coming from the C\+SV file, output of the algorithm to evaluate \\
+\hline
+{\em gt\+\_\+heads} & \+: input vector of ground truth \char`\"{}head\char`\"{} structures \\
+\hline
+{\em pairs} & \+: input vector of pairs between GT and algorithm tracks \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: number of frame latency between beginning of GT track and earlieast beginning of algorithm track 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+Overlap@{compute\+Overlap}}
+\index{compute\+Overlap@{compute\+Overlap}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+Overlap(const Rect \&r1, const Rect \&r2)}{computeOverlap(const Rect &r1, const Rect &r2)}}]{\setlength{\rightskip}{0pt plus 5cm}double compute\+Overlap (
+\begin{DoxyParamCaption}
+\item[{const Rect \&}]{r1, }
+\item[{const Rect \&}]{r2}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a616d0682223add60749889d1a88d092d}{}\label{generate__tracking__results_8cpp_a616d0682223add60749889d1a88d092d}
+
+
+compute\+Overlap \+: computes overlapping between regions of interest 
+
+
+\begin{DoxyParams}{Parameters}
+{\em r1} & \+: input R\+OI 1 \\
+\hline
+{\em r2} & \+: input R\+OI 2 \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: overlapping percentage between the 2 R\+OI 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+T\+DE@{compute\+T\+DE}}
+\index{compute\+T\+DE@{compute\+T\+DE}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+T\+D\+E(const vector$<$ head $>$ \&heads, const vector$<$ head $>$ \&gt\+\_\+heads, const vector$<$ pair$<$ int, int $>$ $>$ \&pairs, double $\ast$standard\+Deviation)}{computeTDE(const vector< head > &heads, const vector< head > &gt_heads, const vector< pair< int, int > > &pairs, double *standardDeviation)}}]{\setlength{\rightskip}{0pt plus 5cm}double compute\+T\+DE (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ {\bf head} $>$ \&}]{heads, }
+\item[{const vector$<$ {\bf head} $>$ \&}]{gt\+\_\+heads, }
+\item[{const vector$<$ pair$<$ int, int $>$ $>$ \&}]{pairs, }
+\item[{double $\ast$}]{standard\+Deviation}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_aa90345c4c0c5d671f90a3ccff5295ccf}{}\label{generate__tracking__results_8cpp_aa90345c4c0c5d671f90a3ccff5295ccf}
+
+
+compute\+T\+DE \+: computes the Track Distance Error (T\+DE) and the corresponding standard deviation 
+
+
+\begin{DoxyParams}{Parameters}
+{\em heads} & \+: input vector of \char`\"{}head\char`\"{} structures coming from the C\+SV file, output of the algorithm to evaluate \\
+\hline
+{\em gt\+\_\+heads} & \+: input vector of ground truth \char`\"{}head\char`\"{} structures \\
+\hline
+{\em pairs} & \+: input vector of pairs between GT and algorithm tracks \\
+\hline
+{\em standard\+Deviation} & \+: output standard deviation of the track distance error \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: track distance error value 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!compute\+T\+P\+FP@{compute\+T\+P\+FP}}
+\index{compute\+T\+P\+FP@{compute\+T\+P\+FP}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{compute\+T\+P\+F\+P(const vector$<$ head $>$ \&heads, const vector$<$ head $>$ \&gt\+\_\+heads, int $\ast$fp, vector$<$ pair$<$ int, int $>$ $>$ $\ast$pairs)}{computeTPFP(const vector< head > &heads, const vector< head > &gt_heads, int *fp, vector< pair< int, int > > *pairs)}}]{\setlength{\rightskip}{0pt plus 5cm}int compute\+T\+P\+FP (
+\begin{DoxyParamCaption}
+\item[{const vector$<$ {\bf head} $>$ \&}]{heads, }
+\item[{const vector$<$ {\bf head} $>$ \&}]{gt\+\_\+heads, }
+\item[{int $\ast$}]{fp, }
+\item[{vector$<$ pair$<$ int, int $>$ $>$ $\ast$}]{pairs}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a2f2ac9bcd499a1fecd1f1b455aad03a2}{}\label{generate__tracking__results_8cpp_a2f2ac9bcd499a1fecd1f1b455aad03a2}
+
+
+compute\+T\+P\+FP \+: computes the number of True Positives (TP) and False Positives (FP) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em heads} & \+: input vector of \char`\"{}head\char`\"{} structures coming from the C\+SV file, output of the algorithm to evaluate \\
+\hline
+{\em gt\+\_\+heads} & \+: input vector of ground truth \char`\"{}head\char`\"{} structures \\
+\hline
+{\em fp} & \+: output number of false positives \\
+\hline
+{\em pairs} & \+: output vector of pairs between GT and algorithm tracks \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: number of true positives 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!read\+GT@{read\+GT}}
+\index{read\+GT@{read\+GT}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{read\+G\+T(const string \&path)}{readGT(const string &path)}}]{\setlength{\rightskip}{0pt plus 5cm}vector$<${\bf head}$>$ read\+GT (
+\begin{DoxyParamCaption}
+\item[{const string \&}]{path}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a1c15bd403662b8169a5d10a7d33597fd}{}\label{generate__tracking__results_8cpp_a1c15bd403662b8169a5d10a7d33597fd}
+
+
+read\+GT \+: read the ground truth file (Viper xml format) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em path} & \+: input path to the ground truth file \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: vector of \char`\"{}head\char`\"{} structures 
+\end{DoxyReturn}
+\index{generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}!read\+Results@{read\+Results}}
+\index{read\+Results@{read\+Results}!generate\+\_\+tracking\+\_\+results.\+cpp@{generate\+\_\+tracking\+\_\+results.\+cpp}}
+\subsubsection[{\texorpdfstring{read\+Results(const string \&path)}{readResults(const string &path)}}]{\setlength{\rightskip}{0pt plus 5cm}vector$<${\bf head}$>$ read\+Results (
+\begin{DoxyParamCaption}
+\item[{const string \&}]{path}
+\end{DoxyParamCaption}
+)}\hypertarget{generate__tracking__results_8cpp_a5782fe6d53f2d7e11f2d57c6bc194a5d}{}\label{generate__tracking__results_8cpp_a5782fe6d53f2d7e11f2d57c6bc194a5d}
+
+
+read\+Results \+: read C\+SV file of generated results 
+
+
+\begin{DoxyParams}{Parameters}
+{\em path} & \+: input path to the C\+SV file \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: vector of \char`\"{}head\char`\"{} structures 
+\end{DoxyReturn}

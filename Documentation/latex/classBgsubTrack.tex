@@ -1,0 +1,304 @@
+\hypertarget{classBgsubTrack}{}\section{Bgsub\+Track Class Reference}
+\label{classBgsubTrack}\index{Bgsub\+Track@{Bgsub\+Track}}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classBgsubTrack_a58433c9fcaaa9b91b01cb3a06377d5f4}{Bgsub\+Track} (const cv\+::\+H\+O\+G\+Descriptor \&hogD, const cv\+::\+Ptr$<$ cv\+::\+Background\+Subtractor $>$ \&gauss\+Mix)
+\begin{DoxyCompactList}\small\item\em \hyperlink{classBgsubTrack}{Bgsub\+Track} \+: constructor. \end{DoxyCompactList}\item 
+void \hyperlink{classBgsubTrack_afdd2aae8d4726564bfeefca64172ddc3}{add\+New\+Trackers} (const std\+::vector$<$ \hyperlink{structdt}{dt} $>$ \&pos\+Detections, std\+::vector$<$ \hyperlink{structcolorHistTracker}{color\+Hist\+Tracker} $>$ $\ast$tracker\+List, const cv\+::\+Mat \&frame, const int \&nframe, int $\ast$id)
+\begin{DoxyCompactList}\small\item\em add\+New\+Trackers \+: instanciate a new tracker for each detection that does not overlap and existing tracked region \end{DoxyCompactList}\item 
+void \hyperlink{classBgsubTrack_a1b848d938094dca656d42d2cdcd7e4e3}{nms} (std\+::vector$<$ \hyperlink{structdt}{dt} $>$ $\ast$pos\+Detections)
+\begin{DoxyCompactList}\small\item\em nms \+: apply Non Maxima Suppression on the detections \end{DoxyCompactList}\item 
+void \hyperlink{classBgsubTrack_a3d481dd5be339cc708ba0ccafa75effa}{roi\+Selection} (const std\+::vector$<$ cv\+::\+Rotated\+Rect $>$ \&rectangles, std\+::vector$<$ cv\+::\+Mat $>$ $\ast$regions, std\+::vector$<$ cv\+::\+Rect2d $>$ $\ast$bounding\+Locations, const cv\+::\+Mat \&frame)
+\begin{DoxyCompactList}\small\item\em roi\+Selection \+: select regions of interest base on size criterion \end{DoxyCompactList}\item 
+void \hyperlink{classBgsubTrack_ac7aac2c7fbad37769597fc0898e869a3}{resize} (std\+::vector$<$ cv\+::\+Mat $>$ $\ast$regions)
+\begin{DoxyCompactList}\small\item\em resize \+: resize images so they are suitable for the following sliding window process \end{DoxyCompactList}\item 
+std\+::vector$<$ std\+::vector$<$ float $>$ $>$ \hyperlink{classBgsubTrack_a1e50a7b63e41aa49cf5575e42daf8a5f}{sliding\+Window} (cv\+::\+Mat image, std\+::vector$<$ cv\+::\+Rect2d $>$ $\ast$roi, const bool \&multiscale=false, const float \&scale\+Factor=0.\+0)
+\begin{DoxyCompactList}\small\item\em sliding\+Window \+: apply the sliding window on the given image and return vector of descriptors \end{DoxyCompactList}\item 
+\hyperlink{structklmFilter}{klm\+Filter} \hyperlink{classBgsubTrack_aafe20a3a749ce57587e90c6a6129993d}{init\+Filter} (const cv\+::\+Rect \&bounding\+Box, const int \&nb\+Frame)
+\begin{DoxyCompactList}\small\item\em init\+Filter \+: instanciate a Kalman filter with hard coded parameters \end{DoxyCompactList}\item 
+void \hyperlink{classBgsubTrack_a25bff01ee6cf3fd85ee9a44298a94766}{update\+Trackers} (const std\+::vector$<$ \hyperlink{structdt}{dt} $>$ \&pos\+Detections, std\+::vector$<$ \hyperlink{structcolorHistTracker}{color\+Hist\+Tracker} $>$ $\ast$tracker\+List, const cv\+::\+Mat \&frame, const int \&nframe, const cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+VM $>$ \&svm, std\+::vector$<$ \hyperlink{structcolorHistTracker}{color\+Hist\+Tracker} $>$ $\ast$significant\+Trackers)
+\begin{DoxyCompactList}\small\item\em update\+Trackers \+: try to update the new position of all instanciated trackers using new detections and jaccard coefficient \end{DoxyCompactList}\item 
+double \hyperlink{classBgsubTrack_a1accbad4f04e3b759b6a571449e4e0c4}{get\+Hist\+Distance} (const cv\+::\+Mat \&roi, cv\+::\+Mat $\ast$b\+\_\+hist, cv\+::\+Mat $\ast$g\+\_\+hist, cv\+::\+Mat $\ast$r\+\_\+hist, std\+::vector$<$ cv\+::\+Mat $>$ histogram)
+\begin{DoxyCompactList}\small\item\em get\+Hist\+Distance \+: calculates the distance between a given image and a reference histogram \end{DoxyCompactList}\item 
+void \hyperlink{classBgsubTrack_a113fe838622ac8879f3e1dba9a1e44b9}{replay\+Tracks} (const std\+::string \&video\+Path, const std\+::vector$<$ \hyperlink{structcolorHistTracker}{color\+Hist\+Tracker} $>$ \&significant\+Trackers)
+\begin{DoxyCompactList}\small\item\em replay\+Tracks \+: display retained tracks \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{structcolorHistTracker}{color\+Hist\+Tracker} $>$ \hyperlink{classBgsubTrack_aa1e976c084ebf6541cbe71136e76d7cd}{fuse\+Trackers} (std\+::vector$<$ \hyperlink{structcolorHistTracker}{color\+Hist\+Tracker} $>$ significant\+Trackers, std\+::vector$<$ cv\+::\+Mat $>$ list\+Frames)
+\begin{DoxyCompactList}\small\item\em fuse\+Trackers \+: try to recover from track fragmentation by re-\/identifying same target tracked twice \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+cv\+::\+H\+O\+G\+Descriptor {\bfseries hog}\hypertarget{classBgsubTrack_a04b684b7ae733215a4117c90219c08fb}{}\label{classBgsubTrack_a04b684b7ae733215a4117c90219c08fb}
+
+\item 
+cv\+::\+Ptr$<$ cv\+::\+Background\+Subtractor $>$ {\bfseries bgsub}\hypertarget{classBgsubTrack_ad5f0f9d665d4636b6d672905f705c875}{}\label{classBgsubTrack_ad5f0f9d665d4636b6d672905f705c875}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Constructor \& Destructor Documentation}
+\index{Bgsub\+Track@{Bgsub\+Track}!Bgsub\+Track@{Bgsub\+Track}}
+\index{Bgsub\+Track@{Bgsub\+Track}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{Bgsub\+Track(const cv\+::\+H\+O\+G\+Descriptor \&hog\+D, const cv\+::\+Ptr$<$ cv\+::\+Background\+Subtractor $>$ \&gauss\+Mix)}{BgsubTrack(const cv::HOGDescriptor &hogD, const cv::Ptr< cv::BackgroundSubtractor > &gaussMix)}}]{\setlength{\rightskip}{0pt plus 5cm}Bgsub\+Track\+::\+Bgsub\+Track (
+\begin{DoxyParamCaption}
+\item[{const cv\+::\+H\+O\+G\+Descriptor \&}]{hogD, }
+\item[{const cv\+::\+Ptr$<$ cv\+::\+Background\+Subtractor $>$ \&}]{gauss\+Mix}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a58433c9fcaaa9b91b01cb3a06377d5f4}{}\label{classBgsubTrack_a58433c9fcaaa9b91b01cb3a06377d5f4}
+
+
+\hyperlink{classBgsubTrack}{Bgsub\+Track} \+: constructor. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em hogD} & \+: input hog descriptor object used to train the classifier \\
+\hline
+{\em gauss\+Mix} & \+: input pointer to a background subtractor object \\
+\hline
+\end{DoxyParams}
+
+
+\subsection{Member Function Documentation}
+\index{Bgsub\+Track@{Bgsub\+Track}!add\+New\+Trackers@{add\+New\+Trackers}}
+\index{add\+New\+Trackers@{add\+New\+Trackers}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{add\+New\+Trackers(const std\+::vector$<$ dt $>$ \&pos\+Detections, std\+::vector$<$ color\+Hist\+Tracker $>$ $\ast$tracker\+List, const cv\+::\+Mat \&frame, const int \&nframe, int $\ast$id)}{addNewTrackers(const std::vector< dt > &posDetections, std::vector< colorHistTracker > *trackerList, const cv::Mat &frame, const int &nframe, int *id)}}]{\setlength{\rightskip}{0pt plus 5cm}void Bgsub\+Track\+::add\+New\+Trackers (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ {\bf dt} $>$ \&}]{pos\+Detections, }
+\item[{std\+::vector$<$ {\bf color\+Hist\+Tracker} $>$ $\ast$}]{tracker\+List, }
+\item[{const cv\+::\+Mat \&}]{frame, }
+\item[{const int \&}]{nframe, }
+\item[{int $\ast$}]{id}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_afdd2aae8d4726564bfeefca64172ddc3}{}\label{classBgsubTrack_afdd2aae8d4726564bfeefca64172ddc3}
+
+
+add\+New\+Trackers \+: instanciate a new tracker for each detection that does not overlap and existing tracked region 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos\+Detections} & \+: input new blob detections in the current frame \\
+\hline
+{\em tracker\+List} & \+: input/output vector of trackers \\
+\hline
+{\em frame} & \+: input current frame \\
+\hline
+{\em nframe} & \+: input number of the current frame \\
+\hline
+{\em id} & \+: input / output current id available for new trackers \\
+\hline
+\end{DoxyParams}
+\index{Bgsub\+Track@{Bgsub\+Track}!fuse\+Trackers@{fuse\+Trackers}}
+\index{fuse\+Trackers@{fuse\+Trackers}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{fuse\+Trackers(std\+::vector$<$ color\+Hist\+Tracker $>$ significant\+Trackers, std\+::vector$<$ cv\+::\+Mat $>$ list\+Frames)}{fuseTrackers(std::vector< colorHistTracker > significantTrackers, std::vector< cv::Mat > listFrames)}}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf color\+Hist\+Tracker}$>$ Bgsub\+Track\+::fuse\+Trackers (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ {\bf color\+Hist\+Tracker} $>$}]{significant\+Trackers, }
+\item[{std\+::vector$<$ cv\+::\+Mat $>$}]{list\+Frames}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_aa1e976c084ebf6541cbe71136e76d7cd}{}\label{classBgsubTrack_aa1e976c084ebf6541cbe71136e76d7cd}
+
+
+fuse\+Trackers \+: try to recover from track fragmentation by re-\/identifying same target tracked twice 
+
+
+\begin{DoxyParams}{Parameters}
+{\em significant\+Trackers} & \+: input vector of all tracks that lasted more than 20 frames \\
+\hline
+{\em list\+Frames} & \+: input vector of all frames, used to calculate histogram distances \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: vector of fused tracks (output vector size $<$= input vector size) 
+\end{DoxyReturn}
+\index{Bgsub\+Track@{Bgsub\+Track}!get\+Hist\+Distance@{get\+Hist\+Distance}}
+\index{get\+Hist\+Distance@{get\+Hist\+Distance}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{get\+Hist\+Distance(const cv\+::\+Mat \&roi, cv\+::\+Mat $\ast$b\+\_\+hist, cv\+::\+Mat $\ast$g\+\_\+hist, cv\+::\+Mat $\ast$r\+\_\+hist, std\+::vector$<$ cv\+::\+Mat $>$ histogram)}{getHistDistance(const cv::Mat &roi, cv::Mat *b_hist, cv::Mat *g_hist, cv::Mat *r_hist, std::vector< cv::Mat > histogram)}}]{\setlength{\rightskip}{0pt plus 5cm}double Bgsub\+Track\+::get\+Hist\+Distance (
+\begin{DoxyParamCaption}
+\item[{const cv\+::\+Mat \&}]{roi, }
+\item[{cv\+::\+Mat $\ast$}]{b\+\_\+hist, }
+\item[{cv\+::\+Mat $\ast$}]{g\+\_\+hist, }
+\item[{cv\+::\+Mat $\ast$}]{r\+\_\+hist, }
+\item[{std\+::vector$<$ cv\+::\+Mat $>$}]{histogram}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a1accbad4f04e3b759b6a571449e4e0c4}{}\label{classBgsubTrack_a1accbad4f04e3b759b6a571449e4e0c4}
+
+
+get\+Hist\+Distance \+: calculates the distance between a given image and a reference histogram 
+
+
+\begin{DoxyParams}{Parameters}
+{\em roi} & \+: input image to be compared \\
+\hline
+{\em b\+\_\+hist} & \+: output blue histogram of the roi \\
+\hline
+{\em g\+\_\+hist} & \+: output green histogram of the roi \\
+\hline
+{\em r\+\_\+hist} & \+: output red histogram of the roi \\
+\hline
+{\em histogram} & \+: input reference histogram \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: distance using Hellinger histogram comparison 
+\end{DoxyReturn}
+\index{Bgsub\+Track@{Bgsub\+Track}!init\+Filter@{init\+Filter}}
+\index{init\+Filter@{init\+Filter}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{init\+Filter(const cv\+::\+Rect \&bounding\+Box, const int \&nb\+Frame)}{initFilter(const cv::Rect &boundingBox, const int &nbFrame)}}]{\setlength{\rightskip}{0pt plus 5cm}{\bf klm\+Filter} Bgsub\+Track\+::init\+Filter (
+\begin{DoxyParamCaption}
+\item[{const cv\+::\+Rect \&}]{bounding\+Box, }
+\item[{const int \&}]{nb\+Frame}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_aafe20a3a749ce57587e90c6a6129993d}{}\label{classBgsubTrack_aafe20a3a749ce57587e90c6a6129993d}
+
+
+init\+Filter \+: instanciate a Kalman filter with hard coded parameters 
+
+
+\begin{DoxyParams}{Parameters}
+{\em bounding\+Box} & \+: input measure of spatial location of the object to track \\
+\hline
+{\em nb\+Frame} & \+: input number of the frame in which the object to tracker was detected \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: intialized Kalman filter 
+\end{DoxyReturn}
+\index{Bgsub\+Track@{Bgsub\+Track}!nms@{nms}}
+\index{nms@{nms}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{nms(std\+::vector$<$ dt $>$ $\ast$pos\+Detections)}{nms(std::vector< dt > *posDetections)}}]{\setlength{\rightskip}{0pt plus 5cm}void Bgsub\+Track\+::nms (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ {\bf dt} $>$ $\ast$}]{pos\+Detections}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a1b848d938094dca656d42d2cdcd7e4e3}{}\label{classBgsubTrack_a1b848d938094dca656d42d2cdcd7e4e3}
+
+
+nms \+: apply Non Maxima Suppression on the detections 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos\+Detections} & \+: input / ouput list of positively classified samples, sorted by highest confidence first \\
+\hline
+\end{DoxyParams}
+\index{Bgsub\+Track@{Bgsub\+Track}!replay\+Tracks@{replay\+Tracks}}
+\index{replay\+Tracks@{replay\+Tracks}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{replay\+Tracks(const std\+::string \&video\+Path, const std\+::vector$<$ color\+Hist\+Tracker $>$ \&significant\+Trackers)}{replayTracks(const std::string &videoPath, const std::vector< colorHistTracker > &significantTrackers)}}]{\setlength{\rightskip}{0pt plus 5cm}void Bgsub\+Track\+::replay\+Tracks (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{video\+Path, }
+\item[{const std\+::vector$<$ {\bf color\+Hist\+Tracker} $>$ \&}]{significant\+Trackers}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a113fe838622ac8879f3e1dba9a1e44b9}{}\label{classBgsubTrack_a113fe838622ac8879f3e1dba9a1e44b9}
+
+
+replay\+Tracks \+: display retained tracks 
+
+
+\begin{DoxyParams}{Parameters}
+{\em video\+Path} & \+: input path to the source video \\
+\hline
+{\em significant\+Trackers} & \+: input list of retained trackers \\
+\hline
+\end{DoxyParams}
+\index{Bgsub\+Track@{Bgsub\+Track}!resize@{resize}}
+\index{resize@{resize}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{resize(std\+::vector$<$ cv\+::\+Mat $>$ $\ast$regions)}{resize(std::vector< cv::Mat > *regions)}}]{\setlength{\rightskip}{0pt plus 5cm}void Bgsub\+Track\+::resize (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ cv\+::\+Mat $>$ $\ast$}]{regions}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_ac7aac2c7fbad37769597fc0898e869a3}{}\label{classBgsubTrack_ac7aac2c7fbad37769597fc0898e869a3}
+
+
+resize \+: resize images so they are suitable for the following sliding window process 
+
+
+\begin{DoxyParams}{Parameters}
+{\em regions} & \+: input/ouput vector of small images \\
+\hline
+\end{DoxyParams}
+\index{Bgsub\+Track@{Bgsub\+Track}!roi\+Selection@{roi\+Selection}}
+\index{roi\+Selection@{roi\+Selection}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{roi\+Selection(const std\+::vector$<$ cv\+::\+Rotated\+Rect $>$ \&rectangles, std\+::vector$<$ cv\+::\+Mat $>$ $\ast$regions, std\+::vector$<$ cv\+::\+Rect2d $>$ $\ast$bounding\+Locations, const cv\+::\+Mat \&frame)}{roiSelection(const std::vector< cv::RotatedRect > &rectangles, std::vector< cv::Mat > *regions, std::vector< cv::Rect2d > *boundingLocations, const cv::Mat &frame)}}]{\setlength{\rightskip}{0pt plus 5cm}void Bgsub\+Track\+::roi\+Selection (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ cv\+::\+Rotated\+Rect $>$ \&}]{rectangles, }
+\item[{std\+::vector$<$ cv\+::\+Mat $>$ $\ast$}]{regions, }
+\item[{std\+::vector$<$ cv\+::\+Rect2d $>$ $\ast$}]{bounding\+Locations, }
+\item[{const cv\+::\+Mat \&}]{frame}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a3d481dd5be339cc708ba0ccafa75effa}{}\label{classBgsubTrack_a3d481dd5be339cc708ba0ccafa75effa}
+
+
+roi\+Selection \+: select regions of interest base on size criterion 
+
+
+\begin{DoxyParams}{Parameters}
+{\em rectangles} & \+: input vector of rectangles extracted from blob detection \\
+\hline
+{\em regions} & \+: output vector of selected small images \\
+\hline
+{\em bounding\+Locations} & \+: output vector of rectangles. Each rectangle is equivalent to the region at same index in \char`\"{}regions\char`\"{} vector \\
+\hline
+{\em frame} & \+: input frame from which were extracted the rectangles \\
+\hline
+\end{DoxyParams}
+\index{Bgsub\+Track@{Bgsub\+Track}!sliding\+Window@{sliding\+Window}}
+\index{sliding\+Window@{sliding\+Window}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{sliding\+Window(cv\+::\+Mat image, std\+::vector$<$ cv\+::\+Rect2d $>$ $\ast$roi, const bool \&multiscale=false, const float \&scale\+Factor=0.\+0)}{slidingWindow(cv::Mat image, std::vector< cv::Rect2d > *roi, const bool &multiscale=false, const float &scaleFactor=0.0)}}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::vector$<$float$>$ $>$ Bgsub\+Track\+::sliding\+Window (
+\begin{DoxyParamCaption}
+\item[{cv\+::\+Mat}]{image, }
+\item[{std\+::vector$<$ cv\+::\+Rect2d $>$ $\ast$}]{roi, }
+\item[{const bool \&}]{multiscale = {\ttfamily false}, }
+\item[{const float \&}]{scale\+Factor = {\ttfamily 0.0}}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a1e50a7b63e41aa49cf5575e42daf8a5f}{}\label{classBgsubTrack_a1e50a7b63e41aa49cf5575e42daf8a5f}
+
+
+sliding\+Window \+: apply the sliding window on the given image and return vector of descriptors 
+
+
+\begin{DoxyParams}{Parameters}
+{\em image} & \+: input image on which we want to extract descriptors \\
+\hline
+{\em roi} & \+: output vector of windows (used to display results after prediction) \\
+\hline
+{\em multiscale} & \+: input boolean to decide if we have to downscale image multiple times to detect (true when the scene contains same object with different scales) \\
+\hline
+{\em scale\+Factor} & \+: input downscale factor, used to resize image when multiscale is set to true; \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\+: vector of descriptors 
+\end{DoxyReturn}
+\index{Bgsub\+Track@{Bgsub\+Track}!update\+Trackers@{update\+Trackers}}
+\index{update\+Trackers@{update\+Trackers}!Bgsub\+Track@{Bgsub\+Track}}
+\subsubsection[{\texorpdfstring{update\+Trackers(const std\+::vector$<$ dt $>$ \&pos\+Detections, std\+::vector$<$ color\+Hist\+Tracker $>$ $\ast$tracker\+List, const cv\+::\+Mat \&frame, const int \&nframe, const cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+V\+M $>$ \&svm, std\+::vector$<$ color\+Hist\+Tracker $>$ $\ast$significant\+Trackers)}{updateTrackers(const std::vector< dt > &posDetections, std::vector< colorHistTracker > *trackerList, const cv::Mat &frame, const int &nframe, const cv::Ptr< cv::ml::SVM > &svm, std::vector< colorHistTracker > *significantTrackers)}}]{\setlength{\rightskip}{0pt plus 5cm}void Bgsub\+Track\+::update\+Trackers (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ {\bf dt} $>$ \&}]{pos\+Detections, }
+\item[{std\+::vector$<$ {\bf color\+Hist\+Tracker} $>$ $\ast$}]{tracker\+List, }
+\item[{const cv\+::\+Mat \&}]{frame, }
+\item[{const int \&}]{nframe, }
+\item[{const cv\+::\+Ptr$<$ cv\+::ml\+::\+S\+VM $>$ \&}]{svm, }
+\item[{std\+::vector$<$ {\bf color\+Hist\+Tracker} $>$ $\ast$}]{significant\+Trackers}
+\end{DoxyParamCaption}
+)}\hypertarget{classBgsubTrack_a25bff01ee6cf3fd85ee9a44298a94766}{}\label{classBgsubTrack_a25bff01ee6cf3fd85ee9a44298a94766}
+
+
+update\+Trackers \+: try to update the new position of all instanciated trackers using new detections and jaccard coefficient 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pos\+Detections} & \+: input vector of detections \\
+\hline
+{\em tracker\+List} & \+: input/output vector of trackers \\
+\hline
+{\em frame} & \+: input current image \\
+\hline
+{\em nframe} & \+: input number of the current frame \\
+\hline
+{\em svm} & \+: input loaded svm model \\
+\hline
+{\em significant\+Trackers} & \+: output vector that stores all tracks that lasted more than 20 frames \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{BgsubTrack_8hpp}{Bgsub\+Track.\+hpp}\end{DoxyCompactItemize}

@@ -1,0 +1,52 @@
+\hypertarget{structklmFilter}{}\section{klm\+Filter Struct Reference}
+\label{structklmFilter}\index{klm\+Filter@{klm\+Filter}}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\bfseries klm\+Filter} (const cv\+::\+Kalman\+Filter \&k, const cv\+::\+Rect \&bb)\hypertarget{structklmFilter_ac0bb918220e5d4a7f5009ccfe2bb7f30}{}\label{structklmFilter_ac0bb918220e5d4a7f5009ccfe2bb7f30}
+
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+cv\+::\+Rect {\bfseries bbox}\hypertarget{structklmFilter_aebb55ec94d73eb9e6b9e55210142d18a}{}\label{structklmFilter_aebb55ec94d73eb9e6b9e55210142d18a}
+
+\item 
+cv\+::\+Mat {\bfseries state} = cv\+::\+Mat\+::zeros(10, 1, C\+V\+\_\+32F)\hypertarget{structklmFilter_ae9aa8e0a2c64c061896811a79c40c3e8}{}\label{structklmFilter_ae9aa8e0a2c64c061896811a79c40c3e8}
+
+\item 
+cv\+::\+Mat {\bfseries meas} = cv\+::\+Mat\+::zeros(10, 1, C\+V\+\_\+32F)\hypertarget{structklmFilter_a08d603b4224ea0f36807373cd69010d4}{}\label{structklmFilter_a08d603b4224ea0f36807373cd69010d4}
+
+\item 
+cv\+::\+Kalman\+Filter {\bfseries kf}\hypertarget{structklmFilter_ab372c3789bca8646e769a063cc13cd03}{}\label{structklmFilter_ab372c3789bca8646e769a063cc13cd03}
+
+\item 
+bool {\bfseries found} = false\hypertarget{structklmFilter_a0e14d33fe07713b4d24a43f595ca413f}{}\label{structklmFilter_a0e14d33fe07713b4d24a43f595ca413f}
+
+\item 
+int {\bfseries not\+Found\+Count} = 0\hypertarget{structklmFilter_aed92ac043bda9f8c2ab1311c6ba04a64}{}\label{structklmFilter_aed92ac043bda9f8c2ab1311c6ba04a64}
+
+\item 
+int {\bfseries num\+Frame} = 0\hypertarget{structklmFilter_a39a17bcf4b65ac7f4fd3bd32b8f2b901}{}\label{structklmFilter_a39a17bcf4b65ac7f4fd3bd32b8f2b901}
+
+\item 
+int {\bfseries num\+Frame2}\hypertarget{structklmFilter_ae2a590a68405dc065802a2b657f56a02}{}\label{structklmFilter_ae2a590a68405dc065802a2b657f56a02}
+
+\item 
+int {\bfseries last\+MeasureX} =0\hypertarget{structklmFilter_a7f8e0d58eeab1e388750ad5d7f5bd7b6}{}\label{structklmFilter_a7f8e0d58eeab1e388750ad5d7f5bd7b6}
+
+\item 
+int {\bfseries last\+MeasureY} = 0\hypertarget{structklmFilter_a56da6c3a67cd60286f11dc003e45b974}{}\label{structklmFilter_a56da6c3a67cd60286f11dc003e45b974}
+
+\item 
+int {\bfseries last\+Measure\+X2} = 0\hypertarget{structklmFilter_a95fb7b045189a2822b17cebdfea5d681}{}\label{structklmFilter_a95fb7b045189a2822b17cebdfea5d681}
+
+\item 
+int {\bfseries last\+Measure\+Y2} = 0\hypertarget{structklmFilter_abc02ad4246d2a1e1a920e1874bc45c77}{}\label{structklmFilter_abc02ad4246d2a1e1a920e1874bc45c77}
+
+\end{DoxyCompactItemize}
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{BgsubTrack_8hpp}{Bgsub\+Track.\+hpp}\end{DoxyCompactItemize}
