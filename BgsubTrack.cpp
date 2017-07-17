@@ -19,9 +19,9 @@
 
 #include "BgsubTrack.hpp"
 
-//#define VIZ 1
-#define TRK_RES 1
-//#define DET_RES 1
+//#define VIZ 1 // visualization flag
+#define TRK_RES 1 // uncomment it to output tracking results
+//#define DET_RES 1 // uncomment it to output detection results
 
 using namespace std;
 using namespace cv;
@@ -534,38 +534,29 @@ void BgsubTrack::replayTracks(const string & videoPath, const vector<colorHistTr
 
 vector<colorHistTracker> BgsubTrack::fuseTrackers(vector<colorHistTracker> significantTrackers, vector<Mat> listFrames)
 {
-    //cout << "signicantTrackers size = " << significantTrackers.size() << endl;
-
     vector<colorHistTracker> fusedTrackers;
     for(int i=0; i < significantTrackers.size(); i++)
     {
-        //cout << "TRACKER" << i << endl;
         fusedTrackers.push_back(significantTrackers[i]);
         for(int j=0; j < significantTrackers.size(); j++)
         {
             if(i==j)
                 continue;
 
-            //check temporal coherence
+            //check temporal coherence, no abs so it avoids processing twice the same track pair
             int temp_dist = significantTrackers[j].numFrame[0] - significantTrackers[i].numFrame[significantTrackers[i].numFrame.size()-1];
             if(temp_dist > 50 || temp_dist < 0)
-            {
-                //cout << "temp_dist = " << temp_dist << endl;
                 continue;
-            }
 
             Rect location1 = significantTrackers[i].locations[significantTrackers[i].locations.size() -1];
-            Rect location2 = significantTrackers[i].locations[0];
+            Rect location2 = significantTrackers[j].locations[0];
 
-            int dx = abs(location1.x - location2.x);
-            int dy = abs(location1.y - location2.y);
+            int dx = location1.x - location2.x;
+            int dy = location1.y - location2.y;
 
             //check spatial coherence
-            if(dx >= 60 || dy >= 60)
-            {
-                //cout << "dx = " << dx << "\t dy = " << dy << endl;
+            if(dx >= 60 || dy >= 60 || dx <= -60 || dy <= -60)
                 continue;
-            }
 
             Mat b_hist, g_hist, r_hist;
             // histogram distance between last histogram of "i" track and first histogram of "j" tracker
@@ -580,34 +571,24 @@ vector<colorHistTracker> BgsubTrack::fuseTrackers(vector<colorHistTracker> signi
 
             //check appearance coherence
             if(distance >= 3.0*mean_distance)
-            {
-                //cout << "distance = " << distance << "\t mean_distance = " << mean_distance << endl;
                 continue;
-            }
 
-            cout << "track " << i << " fused with track " << j << endl << endl;
             //if all coherence tests have been passed then we can fuse the 2 tracks
-            /*cout << "fused significantTracker locations size = " << significantTrackers[i].locations.size() << endl;
-            cout << "fused significantTracker 2 locations size = " << significantTrackers[j].locations.size() << endl;
-            cout << "end first track = " << significantTrackers[i].numFrame[significantTrackers[i].numFrame.size()-1] << endl;
-            cout << "begin second track = " << significantTrackers[j].numFrame[0] << endl;
-            cout << "temporal distance = " << temp_dist << endl;*/
             for(int k=1; k < temp_dist; k++)
             {
                 //linear interpolation to fill the fragmentation
-                Rect l(significantTrackers[i].locations[significantTrackers[i].locations.size()-1].x + (k* dx *(1/25.)),
-                       significantTrackers[i].locations[significantTrackers[i].locations.size()-1].y + (k* dy *(1/25.)),
-                       significantTrackers[i].locations[significantTrackers[i].locations.size()-1].width,
-                       significantTrackers[i].locations[significantTrackers[i].locations.size()-1].height);
+                Rect l(fusedTrackers[i].locations[fusedTrackers[i].locations.size()-1].x + round((dx/(double)temp_dist)),
+                       fusedTrackers[i].locations[fusedTrackers[i].locations.size()-1].y + round((dy/(double)temp_dist)),
+                       fusedTrackers[i].locations[fusedTrackers[i].locations.size()-1].width,
+                       fusedTrackers[i].locations[fusedTrackers[i].locations.size()-1].height);
 
+                // adds estimated locations between the two fragmented tracks at the end of the first one
                 fusedTrackers[fusedTrackers.size()-1].locations.push_back(l);
             }
+            // adds the second part of the fragmented track
             for(int k=0; k < significantTrackers[j].locations.size(); k++)
                 fusedTrackers[fusedTrackers.size()-1].locations.push_back(significantTrackers[j].locations[k]);
-
-            //cout << "locations size after fusion = " << fusedTrackers[fusedTrackers.size() -1].locations.size() << endl;
         }
-        //cout << endl;
     }
     return fusedTrackers;
 }
@@ -673,7 +654,6 @@ int main( int argc, char** argv )
             threshold(diff_mask, diff_mask, 30, 255, CV_THRESH_BINARY);
         }
 
-        //Mat thresholded;
         vector<vector<Point> > contours;
         vector<cv::Vec4i> hierarchy;
 
@@ -801,23 +781,34 @@ int main( int argc, char** argv )
         nbFrame++;
     }
 
+    vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
 #ifdef VIZ
     destroyAllWindows();
-    //vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
-    //bst.replayTracks(argv[1], fusedTrackers);
-    bst.replayTracks(argv[1], significantTrackers);
+    //bst.replayTracks(argv[1], significantTrackers);
+    vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
+    bst.replayTracks(argv[1], fusedTrackers);
+
 #endif
 
 
 #ifdef TRK_RES
     // ouput tracking results (CSV format)
-    for(int i=0; i < significantTrackers.size(); i++)
+    /*for(int i=0; i < significantTrackers.size(); i++)
     {
         for(int j=0; j < significantTrackers[i].numFrame.size(); j++)
             cout << "head" << to_string(i) << ", " << significantTrackers[i].numFrame[j] << ", " <<
                     significantTrackers[i].locations[j].x + significantTrackers[i].locations[j].width / 2 << ", " <<
                     significantTrackers[i].locations[j].y + significantTrackers[i].locations[j].height / 2 << endl;
+    }*/
+
+    for(int i=0; i < fusedTrackers.size(); i++)
+    {
+        for(int j=0; j < fusedTrackers[i].numFrame.size(); j++)
+            cout << "head" << to_string(i) << ", " << fusedTrackers[i].numFrame[j] << ", " <<
+                    fusedTrackers[i].locations[j].x + fusedTrackers[i].locations[j].width / 2 << ", " <<
+                    fusedTrackers[i].locations[j].y + fusedTrackers[i].locations[j].height / 2 << endl;
     }
+
 #endif
 
 }
