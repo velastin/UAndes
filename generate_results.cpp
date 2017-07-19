@@ -10,10 +10,16 @@
 
 // Opencv 3.2
 #include <opencv2/core/utility.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui.hpp>
+#include "opencv2/imgproc.hpp"
 
 
 using namespace std;
 using namespace cv;
+
+#define TEST 1;
 
 int main( int argc, char** argv )
 {
@@ -102,6 +108,8 @@ int main( int argc, char** argv )
 
     cout << "gt bboxes size = " << gt_bboxes.size() << endl;
 
+    vector<int> usedElements;
+    vector<int> detectedElements;
     int false_positives = 0, true_positives=0, false_negatives=0, true_negatives=0;
     for(int i=0; i < detection_bboxes.size(); i++)
     {
@@ -119,8 +127,10 @@ int main( int argc, char** argv )
                 int union_area = ((detection_bboxes[i].width * detection_bboxes[i].height) + (gt_bboxes[j].width * gt_bboxes[j].height)) - intersection_area;
                 double jaccardCoef = double(intersection_area) / double(union_area);
 
-                if(jaccardCoef > 0.05)
+                if(jaccardCoef > 0.1)
                 {
+                    usedElements.push_back(j);
+                    detectedElements.push_back(i);
                     if(classes[i]==1)
                     {
                         true_positives++;
@@ -145,12 +155,62 @@ int main( int argc, char** argv )
         }
     }
 
-    cout << "number of positive bboxes : " << true_positives + false_positives << endl;
-    cout << "number of negative bboxes : " << true_negatives + false_negatives << endl;
+    int undetectedGT=0;
+    for(int i=0; i < gt_bboxes.size(); i++)
+    {
+        if(find(usedElements.begin(), usedElements.end(), i) == usedElements.end())
+            undetectedGT++;
+    }
+
+    cout << "detected ratio = " << (gt_bboxes.size() - undetectedGT) / (double) gt_bboxes.size() << endl;
     cout << "precision = " << true_positives / double(true_positives + false_positives) << endl;
     cout << "recall = " << true_positives / double(true_positives + false_negatives) << endl;
     cout << "accuracy = " << (true_negatives + true_positives) / double(detection_bboxes.size()) << endl;
 
     csv.close();
     gt.close();
+
+
+#ifdef TEST
+    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/pos/test/A_d800mm_R6.mpg");
+    if(! cap.isOpened())
+    {
+        cout << "Could not open video file " << endl;
+        exit(-1);
+    }
+
+    int nb_frame =-1;
+    while(1)
+    {
+        Mat frame;
+        if(!cap.read(frame))
+            exit(-1);
+
+        nb_frame++;
+
+        for(int i=0; i < frame_number_gt.size(); i++)
+        {
+            if(frame_number_gt[i] == nb_frame)
+            {
+                rectangle(frame, gt_bboxes[i], Scalar(255, 0, 0));
+            }
+        }
+
+        for(int i=0; i < frame_number.size(); i++)
+        {
+            if(frame_number[i] == nb_frame)
+            {
+                if(find(detectedElements.begin(), detectedElements.end(), i) != detectedElements.end())
+                    rectangle(frame, detection_bboxes[i], Scalar(0, 255, 0));
+                else
+                    rectangle(frame, detection_bboxes[i], Scalar(0, 0, 255));
+            }
+
+        }
+
+        imshow("results", frame);
+        waitKey(30);
+
+    }
+#endif
 }
