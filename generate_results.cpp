@@ -19,7 +19,8 @@
 using namespace std;
 using namespace cv;
 
-#define TEST 1;
+//#define TEST 1; // outputs a video where true positives, false positives and GT bounding boxes are displayed
+//#define NMS_RES 1; // uncomment this line to generate results after Non Maxima Suppression instead of classic detection results
 
 int main( int argc, char** argv )
 {
@@ -63,7 +64,7 @@ int main( int argc, char** argv )
         sub_str = line.substr(0, line.find(","));
         height = stoi(sub_str);
 
-        detection_bboxes.push_back(Rect(x, y, width, height));
+        detection_bboxes.push_back(Rect(x+(0.125*width), y+(0.125*height), width-(0.25*width), height-(0.25*height)));
     }
 
     cout << "detections bboxes size = " << detection_bboxes.size() << endl;
@@ -111,6 +112,9 @@ int main( int argc, char** argv )
     vector<int> usedElements;
     vector<int> detectedElements;
     int false_positives = 0, true_positives=0, false_negatives=0, true_negatives=0;
+    vector<Rect> fn;
+    vector<Rect> tp;
+    vector<int> ffn, ftp;
     for(int i=0; i < detection_bboxes.size(); i++)
     {
         bool flag = false;
@@ -133,12 +137,16 @@ int main( int argc, char** argv )
                     detectedElements.push_back(i);
                     if(classes[i]==1)
                     {
+                        tp.push_back(detection_bboxes[i]);
+                        ftp.push_back(frame_number[i]);
                         true_positives++;
                         flag = true;
                         break;
                     }
                     else
                     {
+                        fn.push_back(detection_bboxes[i]);
+                        ffn.push_back(frame_number[i]);
                         false_negatives++;
                         flag = true;
                         break;
@@ -155,24 +163,68 @@ int main( int argc, char** argv )
         }
     }
 
+#ifdef NMS_RES
+    int false_negatives_nms = 0;
+    for(int i=0; i < gt_bboxes.size(); i++)
+    {
+        bool flag=false;
+        for(int j=0; j < detection_bboxes.size(); j++)
+        {
+            int x_overlap = max(0, min(detection_bboxes[j].x + detection_bboxes[j].width, gt_bboxes[i].x + gt_bboxes[i].width) -
+                                max(detection_bboxes[j].x, gt_bboxes[i].x));
+            int y_overlap = max(0, min(detection_bboxes[j].y + detection_bboxes[j].height, gt_bboxes[i].y + gt_bboxes[i].height) -
+                                max(detection_bboxes[j].y, gt_bboxes[i].y));
+            int intersection_area = x_overlap * y_overlap;
+            int union_area = ((detection_bboxes[j].width * detection_bboxes[j].height) + (gt_bboxes[i].width * gt_bboxes[i].height)) - intersection_area;
+            double jaccardCoef = double(intersection_area) / double(union_area);
+            if(jaccardCoef > 0.1)
+            {
+                flag=true;
+                break;
+            }
+        }
+        if(!flag)
+            false_negatives_nms++;
+
+    }
+#endif
+
     int undetectedGT=0;
     for(int i=0; i < gt_bboxes.size(); i++)
     {
         if(find(usedElements.begin(), usedElements.end(), i) == usedElements.end())
             undetectedGT++;
     }
-
+    cout << "true_positives = " << true_positives << endl;
+    cout << "true_negatives = " << true_negatives << endl;
+    cout << "false positives = " << false_positives << endl;
+    cout << "false negatives = " << false_negatives << endl;
+    cout << "number of classified samples = " << detection_bboxes.size() << endl;
     cout << "detected ratio = " << (gt_bboxes.size() - undetectedGT) / (double) gt_bboxes.size() << endl;
     cout << "precision = " << true_positives / double(true_positives + false_positives) << endl;
+#ifndef NMS_RES
     cout << "recall = " << true_positives / double(true_positives + false_negatives) << endl;
-    cout << "accuracy = " << (true_negatives + true_positives) / double(detection_bboxes.size()) << endl;
+#else
+    cout << "recall after NMS= " << true_positives / double(true_positives + false_negatives_nms) << endl;
+#endif
+    cout << "accuracy = " << (true_negatives + true_positives) / double(detection_bboxes.size()) << endl << endl;
 
     csv.close();
     gt.close();
 
 
 #ifdef TEST
-    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/pos/test/A_d800mm_R6.mpg");
+    VideoWriter outputVideo;
+    outputVideo.open("/home/mathieu/STAGE/underground_dataset/results/false_negatives.mpg",
+                     VideoWriter::fourcc('M','P','E','G'), 25, Size(352,288), true);
+
+    if(!outputVideo.isOpened())
+    {
+        cout << "Could not open output video file" << endl;
+        exit(-1);
+    }
+
+    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/videos/A_d800mm_R2.mpg");
     if(! cap.isOpened())
     {
         cout << "Could not open video file " << endl;
@@ -184,7 +236,7 @@ int main( int argc, char** argv )
     {
         Mat frame;
         if(!cap.read(frame))
-            exit(-1);
+            break;
 
         nb_frame++;
 
@@ -196,21 +248,27 @@ int main( int argc, char** argv )
             }
         }
 
-        for(int i=0; i < frame_number.size(); i++)
+        /*for(int i=0; i < frame_number.size(); i++)
         {
             if(frame_number[i] == nb_frame)
             {
-                if(find(detectedElements.begin(), detectedElements.end(), i) != detectedElements.end())
+                if(find(detectedElements.begin(), detectedElements.end(), i) != detectedElements.end() && classes[i] == 1)
                     rectangle(frame, detection_bboxes[i], Scalar(0, 255, 0));
                 else
-                    rectangle(frame, detection_bboxes[i], Scalar(0, 0, 255));
+                    if(classes[i] == 1)
+                        rectangle(frame, detection_bboxes[i], Scalar(0, 0, 255));
             }
 
+        }*/
+
+        for(int i=0; i < ffn.size(); i++)
+        {
+            if(ffn[i] == nb_frame)
+            {
+                rectangle(frame, fn[i], Scalar(0,0,255));
+            }
         }
-
-        imshow("results", frame);
-        waitKey(30);
-
+        outputVideo.write(frame);
     }
 #endif
 }
