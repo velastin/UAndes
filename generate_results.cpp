@@ -20,7 +20,6 @@ using namespace std;
 using namespace cv;
 
 //#define TEST 1; // outputs a video where true positives, false positives and GT bounding boxes are displayed
-//#define NMS_RES 1; // uncomment this line to generate results after Non Maxima Suppression instead of classic detection results
 
 int main( int argc, char** argv )
 {
@@ -67,8 +66,6 @@ int main( int argc, char** argv )
         detection_bboxes.push_back(Rect(x+(0.125*width), y+(0.125*height), width-(0.25*width), height-(0.25*height)));
     }
 
-    cout << "detections bboxes size = " << detection_bboxes.size() << endl;
-
     // parses xgtf file by hand because c++ xml parsers seem not suitable for xgtf file, or the xgtf file is too complicated
     vector<int> frame_number_gt;
     vector<Rect> gt_bboxes;
@@ -107,106 +104,88 @@ int main( int argc, char** argv )
         }
     }
 
-    cout << "gt bboxes size = " << gt_bboxes.size() << endl;
+    int true_positives=0, false_negatives=0, true_negatives=0, false_positives=0;
 
-    vector<int> usedElements;
-    vector<int> detectedElements;
-    int false_positives = 0, true_positives=0, false_negatives=0, true_negatives=0;
-    vector<Rect> fn;
-    vector<Rect> tp;
-    vector<int> ffn, ftp;
-    for(int i=0; i < detection_bboxes.size(); i++)
+    vector<int> markedGT;
+    for(int i=0; i < gt_bboxes.size(); i++)
     {
-        bool flag = false;
-        for(int j=0; j < gt_bboxes.size(); j++)
+        for(int j=0; j < detection_bboxes.size(); j++)
         {
-            // checks if we are looking at the same frame
-            if(frame_number[i] == frame_number_gt[j])
+            if(frame_number[j] == frame_number_gt[i])
             {
-                int x_overlap = max(0, min(detection_bboxes[i].x + detection_bboxes[i].width, gt_bboxes[j].x + gt_bboxes[j].width) -
-                                    max(detection_bboxes[i].x, gt_bboxes[j].x));
-                int y_overlap = max(0, min(detection_bboxes[i].y + detection_bboxes[i].height, gt_bboxes[j].y + gt_bboxes[j].height) -
-                                    max(detection_bboxes[i].y, gt_bboxes[j].y));
-                int intersection_area = x_overlap * y_overlap;
-                int union_area = ((detection_bboxes[i].width * detection_bboxes[i].height) + (gt_bboxes[j].width * gt_bboxes[j].height)) - intersection_area;
-                double jaccardCoef = double(intersection_area) / double(union_area);
-
-                if(jaccardCoef > 0.1)
+                if(classes[j] == 1)
                 {
-                    usedElements.push_back(j);
-                    detectedElements.push_back(i);
-                    if(classes[i]==1)
+                    int x_overlap = max(0, min(detection_bboxes[j].x + detection_bboxes[j].width, gt_bboxes[i].x + gt_bboxes[i].width) -
+                                        max(detection_bboxes[j].x, gt_bboxes[i].x));
+                    int y_overlap = max(0, min(detection_bboxes[j].y + detection_bboxes[j].height, gt_bboxes[i].y + gt_bboxes[i].height) -
+                                        max(detection_bboxes[j].y, gt_bboxes[i].y));
+                    int intersection_area = x_overlap * y_overlap;
+                    int union_area = ((detection_bboxes[j].width * detection_bboxes[j].height) + (gt_bboxes[i].width * gt_bboxes[i].height)) - intersection_area;
+                    double jaccardCoef = double(intersection_area) / double(union_area);
+
+                    if(jaccardCoef > 0.1)
                     {
-                        tp.push_back(detection_bboxes[i]);
-                        ftp.push_back(frame_number[i]);
-                        true_positives++;
-                        flag = true;
-                        break;
-                    }
-                    else
-                    {
-                        fn.push_back(detection_bboxes[i]);
-                        ffn.push_back(frame_number[i]);
-                        false_negatives++;
-                        flag = true;
-                        break;
+                        if(find(markedGT.begin(), markedGT.end(), i) == markedGT.end())
+                            markedGT.push_back(i);
                     }
                 }
             }
         }
-        if(!flag)
-        {
-            if(classes[i] == 0)
-                true_negatives++;
-            else
-                false_positives++;
-        }
     }
 
-#ifdef NMS_RES
-    int false_negatives_nms = 0;
     for(int i=0; i < gt_bboxes.size(); i++)
     {
-        bool flag=false;
-        for(int j=0; j < detection_bboxes.size(); j++)
+        if(find(markedGT.begin(), markedGT.end(), i) == markedGT.end())
+            false_negatives++;
+    }
+
+    vector<int> markedDt;
+    for(int i=0; i < detection_bboxes.size(); i++)
+    {
+        if(classes[i] == 1)
         {
-            int x_overlap = max(0, min(detection_bboxes[j].x + detection_bboxes[j].width, gt_bboxes[i].x + gt_bboxes[i].width) -
-                                max(detection_bboxes[j].x, gt_bboxes[i].x));
-            int y_overlap = max(0, min(detection_bboxes[j].y + detection_bboxes[j].height, gt_bboxes[i].y + gt_bboxes[i].height) -
-                                max(detection_bboxes[j].y, gt_bboxes[i].y));
-            int intersection_area = x_overlap * y_overlap;
-            int union_area = ((detection_bboxes[j].width * detection_bboxes[j].height) + (gt_bboxes[i].width * gt_bboxes[i].height)) - intersection_area;
-            double jaccardCoef = double(intersection_area) / double(union_area);
-            if(jaccardCoef > 0.1)
+            for(int j=0; j < gt_bboxes.size(); j++)
             {
-                flag=true;
-                break;
+                if(frame_number[i] == frame_number_gt[j])
+                {
+                    int x_overlap = max(0, min(detection_bboxes[i].x + detection_bboxes[i].width, gt_bboxes[j].x + gt_bboxes[j].width) -
+                                        max(detection_bboxes[i].x, gt_bboxes[j].x));
+                    int y_overlap = max(0, min(detection_bboxes[i].y + detection_bboxes[i].height, gt_bboxes[j].y + gt_bboxes[j].height) -
+                                        max(detection_bboxes[i].y, gt_bboxes[j].y));
+                    int intersection_area = x_overlap * y_overlap;
+                    int union_area = ((detection_bboxes[i].width * detection_bboxes[i].height) + (gt_bboxes[j].width * gt_bboxes[j].height)) - intersection_area;
+                    double jaccardCoef = double(intersection_area) / double(union_area);
+
+                    if(jaccardCoef > 0.1)
+                    {
+                        if(find(markedDt.begin(), markedDt.end(), i) == markedDt.end())
+                            markedDt.push_back(i);
+                    }
+                }
             }
         }
-        if(!flag)
-            false_negatives_nms++;
-
     }
-#endif
 
-    int undetectedGT=0;
-    for(int i=0; i < gt_bboxes.size(); i++)
+    int pos_samples=0, neg_samples=0;
+    for(int i=0; i < detection_bboxes.size(); i++)
     {
-        if(find(usedElements.begin(), usedElements.end(), i) == usedElements.end())
-            undetectedGT++;
+        if(classes[i] == 1)
+        {
+            if(find(markedDt.begin(), markedDt.end(), i) == markedDt.end())
+                false_positives++;
+            pos_samples++;
+        }
+        else
+            neg_samples++;
     }
-    cout << "true_positives = " << true_positives << endl;
-    cout << "true_negatives = " << true_negatives << endl;
-    cout << "false positives = " << false_positives << endl;
-    cout << "false negatives = " << false_negatives << endl;
+
+    true_positives = pos_samples - false_positives;
+    true_negatives = neg_samples - false_negatives;
+
     cout << "number of classified samples = " << detection_bboxes.size() << endl;
-    cout << "detected ratio = " << (gt_bboxes.size() - undetectedGT) / (double) gt_bboxes.size() << endl;
+    cout << "detected ratio = " << markedGT.size() / double(gt_bboxes.size()) << endl;
     cout << "precision = " << true_positives / double(true_positives + false_positives) << endl;
-#ifndef NMS_RES
     cout << "recall = " << true_positives / double(true_positives + false_negatives) << endl;
-#else
-    cout << "recall after NMS= " << true_positives / double(true_positives + false_negatives_nms) << endl;
-#endif
     cout << "accuracy = " << (true_negatives + true_positives) / double(detection_bboxes.size()) << endl << endl;
 
     csv.close();
