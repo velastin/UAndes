@@ -3,6 +3,7 @@
 using namespace cv;
 using namespace std;
 
+//#define HARD_TRAINING 1
 
 TrainSVM::TrainSVM(const float & C, const Size & winSize, const Size & blockSize, const Size & blockStride, const Size & cellSize, int nBins)
 {
@@ -231,10 +232,11 @@ int main( int argc, char** argv )
     vector<vector<float> > * hardDescriptors = new vector<vector<float> >();
     train.testModel(posTestFileNames, negTestFileNames, svm, hardLabels, hardDescriptors);
 
+#ifdef HARD_TRAINING
     cout << "hardDescriptors size = " << hardDescriptors->size() << endl;
     cout << "hardLabels size = " << hardLabels->size() << endl;
 
-    // hard training. Need to retrain the entire model since openCV does not allow to retrain an existing model
+    // hard training. Need to retrain the entire model since openCV does not allow to fine-tune an existing model
     for(int i=0; i < hardDescriptors->size(); i++)
     {
         descriptors->push_back((*hardDescriptors)[i]);
@@ -248,5 +250,6 @@ int main( int argc, char** argv )
     cout << "test after hard training " << endl;
     svm = ml::SVM::load(argv[5]);
     train.testModel(posTestFileNames, negTestFileNames, svm, hardLabels, hardDescriptors);
+#endif
 
 }
