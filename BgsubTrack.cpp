@@ -20,6 +20,8 @@
 #include "BgsubTrack.hpp"
 
 //#define VIZ 1     // visualization flag
+#define FRAME_DIFF 1 // flag to use frame difference background subtraction
+//#define MOG 1 // flag to use MOG background modeling
 //#define TRK_RES 1 // uncomment it to output tracking results
 #define DET_RES 1 // uncomment it to output detection results
 //#define NMS_RES 1   // uncomment it to output detections results after NMS
@@ -646,24 +648,36 @@ int main( int argc, char** argv )
 
         //Applies background subtraction for the current frame and update weights of each pixel
         Mat diff_mask;
+
+#ifdef MOG
         bst.bgsub->apply(frame, diff_mask); // BOSS dataset : add learning rate 0.001
-        /*if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
+#endif
+
+#ifdef FRAME_DIFF
+        if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
         {
             absdiff(previousFrame, currentFrame, diff_mask);
             cvtColor(diff_mask, diff_mask, COLOR_BGR2GRAY);
             threshold(diff_mask, diff_mask, 30, 255, CV_THRESH_BINARY);
-        }*/
+        }
+#endif
 
         vector<vector<Point> > contours;
         vector<cv::Vec4i> hierarchy;
 
         // binarizes image to extract contours
         Mat opened, thresholded;
+
+#ifdef MOG
         threshold(diff_mask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
         //Applies opening on the binarized image to remove small artefacts and to try to split regions that should not be linked (shadows etc)
         morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
         findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
-        //findContours(diff_mask, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+#endif
+
+#ifdef FRAME_DIFF
+        findContours(diff_mask, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+#endif
 
         Mat contoursImg = Mat::zeros(frame.size(), CV_8UC1);
         vector<RotatedRect> rectangles;
