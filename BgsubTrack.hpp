@@ -81,7 +81,7 @@ struct colorHistTracker
         histogram.push_back(g_hist);
         histogram.push_back(r_hist);
     }
-};
+}typedef colorHistTracker;
 
 class BgsubTrack
 {

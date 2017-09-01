@@ -556,7 +556,7 @@ double computeCompleteness(const vector<head> & heads, const vector<head> & gt_h
 
     //calculates standard deviation of the track completeness;
     for(int i=0; i < completeness_vec.size(); i++)
-        (*standardDeviation) += abs(completeness_vec[i] - completeness);
+        (*standardDeviation) += pow(completeness_vec[i] - completeness, 2);
 
     (*standardDeviation) = sqrt((*standardDeviation) / (double)(completeness_vec.size()-1));
 
@@ -604,4 +604,88 @@ int main( int argc, char** argv )
     cout << "id changes = " << id_changes << endl;
     cout << "completeness = " << completeness << endl;
     cout << "completeness standard deviation = " << completenessDeviation << endl;
+
+
+    int dt_false_positives = 0, dt_true_positives=0;
+    for(int i=0; i < heads.size(); i++)
+    {
+        for(int j=0; j < heads[i].bboxes.size(); j++)
+        {
+            bool flag = false;
+            for(int k=0; k < gt_heads.size(); k++)
+            {
+                for(int l=0; l < gt_heads[k].bboxes.size(); l++)
+                {
+                    // checks if we are looking at the same frame
+                    if(heads[i].numFrame[j] == gt_heads[k].numFrame[l])
+                    {
+                        int x_overlap = max(0, min(heads[i].bboxes[j].x + heads[i].bboxes[j].width, gt_heads[k].bboxes[l].x + gt_heads[k].bboxes[l].width) -
+                                            max(heads[i].bboxes[j].x, gt_heads[k].bboxes[l].x));
+                        int y_overlap = max(0, min(heads[i].bboxes[j].y + heads[i].bboxes[j].height, gt_heads[k].bboxes[l].y + gt_heads[k].bboxes[l].height) -
+                                            max(heads[i].bboxes[j].y, gt_heads[k].bboxes[l].y));
+                        int intersection_area = x_overlap * y_overlap;
+                        int union_area = ((heads[i].bboxes[j].width * heads[i].bboxes[j].height) + (gt_heads[k].bboxes[l].width * gt_heads[k].bboxes[l].height)) - intersection_area;
+                        double jaccardCoef = double(intersection_area) / double(union_area);
+
+                        if(jaccardCoef > 0.1)
+                        {
+                            dt_true_positives++;
+                            flag=true;
+                            break;
+                        }
+                    }
+                }
+                if(flag)
+                    break;
+            }
+            if(!flag)
+            {
+                dt_false_positives++;
+            }
+        }
+    }
+
+    int dt_false_negatives=0;
+    int nb_gt = 0;
+    for(int i=0; i < gt_heads.size(); i++)
+    {
+        for(int j=0; j < gt_heads[i].bboxes.size(); j++)
+        {
+            nb_gt++;
+            bool flag = false;
+            for(int k=0; k < heads.size(); k++)
+            {
+                for(int l=0; l < heads[k].bboxes.size(); l++)
+                {
+                    // checks if we are looking at the same frame
+                    if(gt_heads[i].numFrame[j] == heads[k].numFrame[l])
+                    {
+                        int x_overlap = max(0, min(gt_heads[i].bboxes[j].x + gt_heads[i].bboxes[j].width, heads[k].bboxes[l].x + heads[k].bboxes[l].width) -
+                                            max(gt_heads[i].bboxes[j].x, heads[k].bboxes[l].x));
+                        int y_overlap = max(0, min(gt_heads[i].bboxes[j].y + gt_heads[i].bboxes[j].height, heads[k].bboxes[l].y + heads[k].bboxes[l].height) -
+                                            max(gt_heads[i].bboxes[j].y, heads[k].bboxes[l].y));
+                        int intersection_area = x_overlap * y_overlap;
+                        int union_area = ((gt_heads[i].bboxes[j].width * gt_heads[i].bboxes[j].height) + (heads[k].bboxes[l].width * heads[k].bboxes[l].height)) - intersection_area;
+                        double jaccardCoef = double(intersection_area) / double(union_area);
+
+                        if(jaccardCoef > 0.1)
+                        {
+                            flag=true;
+                            break;
+                        }
+                    }
+                }
+                if(flag)
+                    break;
+            }
+            if(!flag)
+            {
+                dt_false_negatives++;
+            }
+        }
+    }
+    cout << "detected ratio = " << (nb_gt - dt_false_negatives) / (double) nb_gt << endl;
+    cout << "precision = " << dt_true_positives / (double)(dt_true_positives + dt_false_positives) << endl;
+    cout << "recall = " << dt_true_positives / (double)(dt_true_positives + dt_false_negatives) << endl;
+
 }

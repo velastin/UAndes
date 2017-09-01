@@ -3,7 +3,7 @@
 using namespace cv;
 using namespace std;
 
-//#define HARD_TRAINING 1
+#define HARD_TRAINING 1
 
 TrainSVM::TrainSVM(const float & C, const Size & winSize, const Size & blockSize, const Size & blockStride, const Size & cellSize, int nBins)
 {

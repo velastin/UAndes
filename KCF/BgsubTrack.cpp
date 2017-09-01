@@ -19,7 +19,10 @@
 
 #include "BgsubTrack.hpp"
 
-#define VIZ 1
+//#define VIZ 1     // visualization flag
+#define TRK_RES 1 // uncomment it to output tracking results
+//#define DET_RES 1 // uncomment it to output detection results
+//#define NMS_RES 1   // uncomment it to output detections results after NMS
 
 using namespace std;
 using namespace cv;
@@ -522,8 +525,8 @@ int main( int argc, char** argv )
         currentFrame = frame.clone();
 
         //Applies background subtraction for the current frame and update weights of each pixel
-        //bst.bgsub->apply(frame, fgmask); // BOSS dataset : add learning rate 0.001
         Mat diff_mask;
+	//bst.bgsub->apply(frame, diff_mask); // BOSS dataset : add learning rate 0.001
         if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
         {
             absdiff(previousFrame, currentFrame, diff_mask);
@@ -536,8 +539,8 @@ int main( int argc, char** argv )
         vector<cv::Vec4i> hierarchy;
 
         // binarizes image to extract contours
-        //Mat opened;
-        //threshold(fgmask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
+        //Mat opened, thresholded;
+        //threshold(diff_mask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
         //Applies opening on the binarized image to remove small artefacts and to try to split regions that should not be linked (shadows etc)
         //morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
         //findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
@@ -570,7 +573,7 @@ int main( int argc, char** argv )
         //resize regions to avoid sliding window OOB problems
         if(regions.size() > 0)
             bst.resize(&regions);
-
+	
         Mat true_detections = frame.clone();
         vector<dt> posDetections;
         // iterates over all selected regions in order to feed them to the classifier
@@ -580,7 +583,7 @@ int main( int argc, char** argv )
             vector<vector<float> > descriptors;
             vector<Rect2d> * outputROI = new vector<Rect2d>();
             descriptors = bst.slidingWindow(regions[i], outputROI); // single scale detection
-
+            //descriptors = bst.slidingWindow(frame, outputROI);
             for(int j = 0; j < (int)descriptors.size(); j++)
             {
                 // asks the classifier whether it belongs to the positive class
@@ -591,13 +594,16 @@ int main( int argc, char** argv )
                 if(prediction != 0) // != 0 subway dataset, ==1 BOSS dataset
                 {
                     //relocates the head in the global image (frame)
-                    Rect accurateRect(boundingLocations[i].x + (*outputROI)[j].x, boundingLocations[i].y + (*outputROI)[j].y,
+                    Rect accurateRect(boundingLocations[i].x +(*outputROI)[j].x, boundingLocations[i].y + (*outputROI)[j].y,
                                       (*outputROI)[j].width, (*outputROI)[j].height);
 
                     posDetections.push_back(dt(accurateRect, conf.at<float>(0,0)));
 
+#ifdef DET_RES
                     //Ouput detections results (CSV format)
-                    //cout << nbFrame << ", 1, " << accurateRect.x << ", " << accurateRect.y << ", " << accurateRect.width << ", " << accurateRect.height << endl;
+                    cout << nbFrame << ", 1, " << accurateRect.x << ", " << accurateRect.y << ", " << accurateRect.width << ", " << accurateRect.height << endl;
+#endif
+
 #ifdef VIZ
                     if(accurateRect.x + accurateRect.width > frame.cols)
                         accurateRect.width = frame.cols - accurateRect.x;
@@ -607,9 +613,14 @@ int main( int argc, char** argv )
                     rectangle(true_detections, accurateRect, Scalar(0, 0, 255));
 #endif
                 }
-                /*else
-                    cout << nbFrame << ", 0, " << (*outputROI)[j].x + boundingLocations[i].x << ", " << (*outputROI)[j].y + boundingLocations[i].y
-                         << (*outputROI)[j].width << ", " << (*outputROI)[j].height << endl;*/
+
+#ifdef DET_RES
+                else
+		        {
+                    cout << nbFrame << ", 0, " << (*outputROI)[j].x + boundingLocations[i].x << ", " << (*outputROI)[j].y + boundingLocations[i].y << ",  "
+                         << (*outputROI)[j].width << ", " << (*outputROI)[j].height << endl;
+		        }
+#endif
             }
         }
 
@@ -623,6 +634,15 @@ int main( int argc, char** argv )
         for(int i=0; i < posDetections.size(); i++)
             rectangle(highestconf, posDetections[i].boundingBox, Scalar(0, 0, 255));
         imshow("after nms", highestconf);
+#endif
+
+#ifdef NMS_RES
+        //Ouput detections results after NMS(CSV format)
+        for(int i=0; i < posDetections.size(); i++)
+        {
+            cout << nbFrame << ", 1, " << posDetections[i].boundingBox.x << ", " << posDetections[i].boundingBox.y << ", "
+                 << posDetections[i].boundingBox.width << ", " << posDetections[i].boundingBox.height << endl;
+        }
 #endif
 
 //==========================
@@ -663,6 +683,7 @@ int main( int argc, char** argv )
     }
     //cout << "significant trackers size = " << significantTrackers.size() << endl;
 
+#ifdef TRK_RES
     // ouput tracking results (CSV format)
     for(int i=0; i < significantTrackers.size(); i++)
     {
@@ -671,5 +692,6 @@ int main( int argc, char** argv )
                     significantTrackers[i].locations[j].x + significantTrackers[i].locations[j].width / 2 << ", " <<
                     significantTrackers[i].locations[j].y + significantTrackers[i].locations[j].height / 2 << endl;
     }
+#endif
 
 }

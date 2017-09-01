@@ -9,7 +9,7 @@
 #include <fstream>
 
 // Opencv 3.2
-#include <opencv2/core/utility.hpp>
+//#include <opencv2/core/utility.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui.hpp>
@@ -23,12 +23,19 @@ using namespace cv;
 
 int main( int argc, char** argv )
 {
+    if(argc < 3)
+    {
+        cout << "Need the following arguments : " << endl;
+        cout << "\t 1. path to the csv file containing software results" << endl;
+        cout << "\t 2. path to the ground truth file " << endl;
+        exit(-1);
+    }
     ifstream csv(argv[1], ios::in);
     ifstream gt(argv[2], ios::in);
 
     if(! (csv || gt))
     {
-        cout << "Could not open one of the files given" << endl;
+        cout << "Could not open one of the given files" << endl;
         exit(-1);
     }
 

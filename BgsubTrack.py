@@ -12,7 +12,16 @@ import argparse
 
 import numpy as np
 
-viz = True
+from nets import inception_utils
+from nets import inception_v4
+from preprocessing import inception_preprocessing
+
+import tensorflow.contrib.slim as slim
+
+import csv
+
+
+viz = False
 
 #function used to sort list of detections by confidence
 def getKey(dt):
@@ -50,7 +59,7 @@ class BgsubTrack:
     #getHistDistance : Calculates the distance between 2 histogram
     #@param roi : part of an image on which we have to calculate the corresponding histogram
     #@param histogram : reference histogram used to do the comparison
-    #return : batacharrya distance between the 2 histograms, and the calculated histogram
+    #return : Hellinger distance between the 2 histograms, and the calculated histogram
     def getHistDistance(self, roi, histogram): 
         hist = []
         hist.append(cv2.calcHist([roi],[0],None,[256],[0,256]))
@@ -72,11 +81,11 @@ class BgsubTrack:
     #return : list of descriptors and list of locations in the image
     def slidingWindow(self, image, multiscale=False, scaleFactor=0.0):
         if image.shape[1] %self.hog.blockStride[0] != 0 or image.shape[0] %self.hog.blockStride[1] != 0:
-            print "Image size must be a multiple of block stride"
+            print("Image size must be a multiple of block stride")
             exit()
 
         if image.shape[1] < self.hog.winSize[1] or image.shape[0] < self.hog.winSize[0]:
-            print "Image is smaller than detection window"
+            print("Image is smaller than detection window")
             exit()
 
         descriptors = []
@@ -94,10 +103,10 @@ class BgsubTrack:
                         break;
                     
                     #if viz:
-                        #clone = np.copy(image);
-                        #cv2.rectangle(clone, (j,i), (j+self.hog.winSize[0], i+self.hog.winSize[1]), (0, 0, 255));
-                        #cv2.imshow("sliding window", clone);
-                        #cv2.waitKey(30);
+                    #    clone = np.copy(image)
+                    #    cv2.rectangle(clone, (j,i), (j+self.hog.winSize[0], i+self.hog.winSize[1]), (0, 0, 255))
+                    #    cv2.imshow("sliding window", clone)
+                    #    cv2.waitKey(30)
 
                     #extracts the window and computes HOG descriptors
                     window = image[i:i+self.hog.winSize[1], j:j+self.hog.winSize[0]];
@@ -120,8 +129,9 @@ class BgsubTrack:
             if region.shape[0] %self.hog.blockStride[1] != 0 or region.shape[1] % self.hog.blockStride[0] != 0:
                 region=cv2.resize(region, (region.shape[1] + self.hog.blockStride[0] - region.shape[1] % self.hog.blockStride[0], 
                                     region.shape[0] + self.hog.blockStride[1] - region.shape[0] % self.hog.blockStride[1]))
-                
+
             if region.shape[0] < self.hog.winSize[1]:
+                print("region shape = ", region.shape)
                 region=cv2.resize(region, (region.shape[1], self.hog.winSize[1]))
             if region.shape[1] < self.hog.winSize[0]:   
                 region = cv2.resize(region, (self.hog.winSize[0], region.shape[0]))
@@ -162,6 +172,7 @@ class BgsubTrack:
                 if overlap_area/float(total_area) > 0.1:
                     del posDetections[i]
                     break
+
         return posDetections
 
 
@@ -332,21 +343,30 @@ if __name__ == '__main__':
     parser.add_argument('model_path', help='Path to .meta file containing the graph')
     parser.add_argument('video_path', help='Path to the video to be processed')
     args = parser.parse_args()
-
+   
+    csv_file = open("C:\\Users\\sergio\\TF_slim_workspace\\slim\\A_d800mm_R1.csv", "w")
+    writer = csv.writer(csv_file)
+	
     bgsubTrack = BgsubTrack()
     cap = cv2.VideoCapture(args.video_path)
     #svm = cv2.ml.SVM_load("/home/mathieu/STAGE/underground_dataset/results/models/openCV_model.xml")
 
     trackerList = []
     significantTrackers = []
-    with tf.Session() as sess:
-        saver = tf.train.import_meta_graph(args.model_path)
-        saver.restore(sess, tf.train.latest_checkpoint('./'))
-        graph = tf.get_default_graph()
-        x = graph.get_tensor_by_name("x:0")
-        y = graph.get_tensor_by_name("y:0")
-        op_to_restore = graph.get_tensor_by_name("output_op:0")
-        print "loaded graph successfully"
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+        arg_scope = inception_utils.inception_arg_scope()
+        im_size = 299
+
+        inputs = tf.placeholder(tf.float32, (None, im_size, im_size, 3))
+        inputs_processed = inception_preprocessing.preprocess_image(tf.squeeze(inputs), im_size, im_size,3)
+        inputs_processed = tf.expand_dims(inputs_processed, 0)
+
+        with slim.arg_scope(arg_scope):
+            logits, end_points = inception_v4.inception_v4(inputs_processed)
+
+        saver = tf.train.Saver()
+        saver.restore(sess, tf.train.latest_checkpoint('../output_graph/'))
 
         currentFrame = np.ndarray(shape=(0,0))
         previousFrame = np.ndarray(shape=(0,0))
@@ -389,15 +409,17 @@ if __name__ == '__main__':
                 descriptors, roi = bgsubTrack.slidingWindow(region)
 
                 #classify extracted descriptors
-                for idxd, desc in enumerate(descriptors):
-                    desc = desc.reshape(1, desc.shape[0])
-                    feed_dict = {x:desc}
-                    output = sess.run(op_to_restore, feed_dict)
-
-                    if output[0][0] > output[0][1]:
+                for idxd, reg in enumerate(roi):
+                    #desc = desc.reshape(1, desc.shape[0])                   
+                    feed_im = np.copy(currentFrame[boundingLocations[idxr][1] + reg[1]:reg[3] +  boundingLocations[idxr][1] + reg[1], boundingLocations[idxr][0] + reg[0]:boundingLocations[idxr][0] + reg[0] + reg[2]])
+                    feed_im = cv2.resize(feed_im, (im_size, im_size))
+                    feed_im = np.expand_dims(np.array(feed_im), 0)
+                    logit_values = sess.run(logits, feed_dict={inputs:feed_im})
+					
+                    if np.argmax(logit_values)==1:
                         #relocate accurately the window
                         accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
-                        posDetections.append(dt(accurateRect, output[0][0]))
+                        posDetections.append(dt(accurateRect, logit_values[0][1]))
                         if viz:
                             if accurateRect[0] + accurateRect[2] > frame.shape[0]:
                                 accurateRect[2] = frame.shape[0] - accurateRect[0]
@@ -405,15 +427,20 @@ if __name__ == '__main__':
                                 accurateRect[3] = frame.shape[1] - accurateRect[1]
 
                             cv2.rectangle(true_detections, (accurateRect[0], accurateRect[1]), (accurateRect[0]+accurateRect[2], accurateRect[1]+accurateRect[3]), (0, 0, 255));
+                        #Ouput detections results (CSV format)
+                        writer.writerow([numFrame, "1", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3]])
+                    else:
+                        accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
+                        writer.writerow([numFrame, "0", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3]])
 
-            if viz:
-                cv2.imshow("true_detections", true_detections)
+            #if viz:
+            #    cv2.imshow("true_detections", true_detections)
 
-            sorted(posDetections, key=getKey, reverse=True)
-            posDetections = bgsubTrack.nms(posDetections)
+            #sorted(posDetections, key=getKey, reverse=True)
+            #posDetections = bgsubTrack.nms(posDetections)
             
-            trackerList, significantTrackers = bgsubTrack.updateTrackers(posDetections, trackerList, frame, numFrame, significantTrackers)
-            trackerList = bgsubTrack.addNewTrackers(posDetections, trackerList, frame, numFrame)
+            #trackerList, significantTrackers = bgsubTrack.updateTrackers(posDetections, trackerList, frame, numFrame, significantTrackers)
+            #trackerList = bgsubTrack.addNewTrackers(posDetections, trackerList, frame, numFrame)
 
             previousFrame = np.copy(currentFrame)
             
