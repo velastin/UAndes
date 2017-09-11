@@ -19,12 +19,12 @@
 
 #include "BgsubTrack.hpp"
 
-//#define VIZ 1     // visualization flag
-#define FRAME_DIFF 1 // flag to use frame difference background subtraction
-//#define MOG 1 // flag to use MOG background modeling
-//#define TRK_RES 1 // uncomment it to output tracking results
-#define DET_RES 1 // uncomment it to output detection results
-//#define NMS_RES 1   // uncomment it to output detections results after NMS
+//#define VIZ 1         // visualization flag
+#define FRAME_DIFF 1    // flag to use frame difference background subtraction
+//#define MOG 1         // flag to use MOG background modeling
+//#define TRK_RES 1     // uncomment it to output tracking results
+#define DET_RES 1       // uncomment it to output detection results
+//#define NMS_RES 1     // uncomment it to output detections results after NMS
 
 using namespace std;
 using namespace cv;
@@ -64,7 +64,7 @@ void BgsubTrack::addNewTrackers(const vector<dt> & posDetections, vector<colorHi
                 int y2_br = (*trackerList)[j].bbox.y + (*trackerList)[j].bbox.height;
                 int area_2 = (*trackerList)[j].bbox.width * (*trackerList)[j].bbox.height;
 
-                // Calculates overlapping area and applies Non Maxima Suppression
+                // Calculates overlapping area
                 int x_overlap = max(0, min(x1_br, x2_br) - max(x1_tl, x2_tl));
                 int y_overlap = max(0, min(y1_br, y2_br) - max(y1_tl, y2_tl));
                 int overlap_area = x_overlap * y_overlap;
@@ -438,7 +438,7 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<colorHi
                 }
                 else
                 {
-                    //if we cannot find the target for 10 frames then we assume it was a false detection and remove the tracker
+                    //if we cannot find the target for 5 frames then we assume it was a false detection and remove the tracker
                     (*trackerList)[i].noMeasureCount ++ ;
                     flagNoRedetect = true;
                     if((*trackerList)[i].noMeasureCount == 5)
@@ -503,6 +503,14 @@ double BgsubTrack::getHistDistance(const Mat & roi, Mat * b_hist, Mat * g_hist, 
 
 void BgsubTrack::replayTracks(const string & videoPath, const vector<colorHistTracker> & significantTrackers)
 {
+    VideoWriter outputVideo;
+    outputVideo.open("/home/mathieu/STAGE/underground_dataset/results/tracking_A_d800mm_R7.mpg", VideoWriter::fourcc('M','P','E','G'), 25, Size(352,288), true);
+    if(!outputVideo.isOpened())
+    {
+        cout << "replayTracks : cannot open output video file" << endl;
+        exit(-1);
+    }
+
     VideoCapture cap(videoPath);
     if(!cap.isOpened())
     {
@@ -529,6 +537,8 @@ void BgsubTrack::replayTracks(const string & videoPath, const vector<colorHistTr
                 }
             }
         }
+        outputVideo.write(trackers);
+
         imshow("relevant_trackers", trackers);
         waitKey(30);
         nbFrame++;
@@ -808,9 +818,9 @@ int main( int argc, char** argv )
 
 #ifdef VIZ
     destroyAllWindows();
-    //bst.replayTracks(argv[1], significantTrackers);
-    vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
-    bst.replayTracks(argv[1], fusedTrackers);
+    bst.replayTracks(argv[1], significantTrackers);
+    //vector<colorHistTracker> fusedTrackers = bst.fuseTrackers(significantTrackers, listFrames);
+    //bst.replayTracks(argv[1], fusedTrackers);
 
 #endif
 

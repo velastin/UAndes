@@ -4,7 +4,6 @@
  * \version 1.0
  */
 
-
 // Standard
 #include <iostream>
 #include <fstream>
@@ -12,6 +11,12 @@
 
 // Opencv 3.2
 #include <opencv2/core/utility.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui.hpp>
+#include "opencv2/imgproc.hpp"
+
+#define TEST 1
 
 using namespace std;
 using namespace cv;
@@ -606,6 +611,8 @@ int main( int argc, char** argv )
     cout << "completeness standard deviation = " << completenessDeviation << endl;
 
 
+    vector<pair<int, int> > detectedElements;
+    vector<pair<int, int> > badlyDetectedElements;
     int dt_false_positives = 0, dt_true_positives=0;
     for(int i=0; i < heads.size(); i++)
     {
@@ -629,6 +636,7 @@ int main( int argc, char** argv )
 
                         if(jaccardCoef > 0.1)
                         {
+                            detectedElements.push_back(pair<int, int>(i,j));
                             dt_true_positives++;
                             flag=true;
                             break;
@@ -640,6 +648,7 @@ int main( int argc, char** argv )
             }
             if(!flag)
             {
+                badlyDetectedElements.push_back(pair<int, int>(i,j));
                 dt_false_positives++;
             }
         }
@@ -687,5 +696,62 @@ int main( int argc, char** argv )
     cout << "detected ratio = " << (nb_gt - dt_false_negatives) / (double) nb_gt << endl;
     cout << "precision = " << dt_true_positives / (double)(dt_true_positives + dt_false_positives) << endl;
     cout << "recall = " << dt_true_positives / (double)(dt_true_positives + dt_false_negatives) << endl;
+
+#ifdef TEST
+    VideoWriter outputVideo;
+    outputVideo.open("/home/mathieu/STAGE/underground_dataset/results/A_d800mm_R7_tracking.mpg",
+                     VideoWriter::fourcc('M','P','E','G'), 25, Size(352,288), true);
+
+    if(!outputVideo.isOpened())
+    {
+        cout << "Could not open output video file" << endl;
+        exit(-1);
+    }
+
+    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/pos/test/A_d800mm_R7.mpg");
+    if(! cap.isOpened())
+    {
+        cout << "Could not open video file " << endl;
+        exit(-1);
+    }
+
+    int nb_frame =-1;
+    while(1)
+    {
+        Mat frame;
+        if(!cap.read(frame))
+            break;
+
+        nb_frame++;
+
+        for(int i=0; i < gt_heads.size(); i++)
+        {
+            for(int j=0; j < gt_heads[i].numFrame.size(); j++)
+            {
+                if(gt_heads[i].numFrame[j] == nb_frame)
+                {
+                    rectangle(frame, gt_heads[i].bboxes[j], Scalar(255, 0, 0));
+                }
+            }
+        }
+
+        for(int i=0; i < heads.size(); i++)
+        {
+            for(int j=0; j < heads[i].numFrame.size(); j++)
+            {
+                if(heads[i].numFrame[j] == nb_frame)
+                {
+                    if(find(detectedElements.begin(), detectedElements.end(), pair<int, int>(i,j)) != detectedElements.end())
+                        rectangle(frame, heads[i].bboxes[j], Scalar(0, 255, 0));
+                    else
+                        if(find(badlyDetectedElements.begin(), badlyDetectedElements.end(), pair<int, int>(i,j)) != detectedElements.end())
+                            rectangle(frame, heads[i].bboxes[j], Scalar(0, 0, 255));
+                }
+            }
+        }
+
+        outputVideo.write(frame);
+    }
+#endif
 
 }

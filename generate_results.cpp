@@ -19,7 +19,7 @@
 using namespace std;
 using namespace cv;
 
-//#define TEST 1; // outputs a video where true positives, false positives and GT bounding boxes are displayed
+#define TEST 1; // outputs a video where true positives, false positives and GT bounding boxes are displayed
 
 int main( int argc, char** argv )
 {
@@ -113,6 +113,8 @@ int main( int argc, char** argv )
 
     int true_positives=0, false_negatives=0, true_negatives=0, false_positives=0;
 
+    vector<int> detectedElements;
+    //iterates over all ground truth samples to count false negatives
     vector<int> markedGT;
     for(int i=0; i < gt_bboxes.size(); i++)
     {
@@ -132,6 +134,7 @@ int main( int argc, char** argv )
 
                     if(jaccardCoef > 0.1)
                     {
+                        detectedElements.push_back(j);
                         if(find(markedGT.begin(), markedGT.end(), i) == markedGT.end())
                             markedGT.push_back(i);
                     }
@@ -146,6 +149,7 @@ int main( int argc, char** argv )
             false_negatives++;
     }
 
+    //iterates over all detections to count false positives
     vector<int> markedDt;
     for(int i=0; i < detection_bboxes.size(); i++)
     {
@@ -201,7 +205,7 @@ int main( int argc, char** argv )
 
 #ifdef TEST
     VideoWriter outputVideo;
-    outputVideo.open("/home/mathieu/STAGE/underground_dataset/results/false_negatives.mpg",
+    outputVideo.open("/home/mathieu/STAGE/underground_dataset/results/detections_A_d800mm_R7.mpg",
                      VideoWriter::fourcc('M','P','E','G'), 25, Size(352,288), true);
 
     if(!outputVideo.isOpened())
@@ -210,7 +214,7 @@ int main( int argc, char** argv )
         exit(-1);
     }
 
-    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/videos/A_d800mm_R2.mpg");
+    VideoCapture cap("/home/mathieu/STAGE/underground_dataset/pos/test/A_d800mm_R7.mpg");
     if(! cap.isOpened())
     {
         cout << "Could not open video file " << endl;
@@ -234,7 +238,7 @@ int main( int argc, char** argv )
             }
         }
 
-        /*for(int i=0; i < frame_number.size(); i++)
+        for(int i=0; i < frame_number.size(); i++)
         {
             if(frame_number[i] == nb_frame)
             {
@@ -243,15 +247,6 @@ int main( int argc, char** argv )
                 else
                     if(classes[i] == 1)
                         rectangle(frame, detection_bboxes[i], Scalar(0, 0, 255));
-            }
-
-        }*/
-
-        for(int i=0; i < ffn.size(); i++)
-        {
-            if(ffn[i] == nb_frame)
-            {
-                rectangle(frame, fn[i], Scalar(0,0,255));
             }
         }
         outputVideo.write(frame);
