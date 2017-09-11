@@ -353,7 +353,7 @@ if __name__ == '__main__':
 
     trackerList = []
     significantTrackers = []
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7) #do not set gpu memory usage to 100% otherwise the program crashes
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
         arg_scope = inception_utils.inception_arg_scope()
         im_size = 299
