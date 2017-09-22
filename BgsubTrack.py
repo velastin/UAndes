@@ -12,16 +12,26 @@ import argparse
 
 import numpy as np
 
+#TF-slim
 from nets import inception_utils
 from nets import inception_v4
 from preprocessing import inception_preprocessing
-
 import tensorflow.contrib.slim as slim
+
+#Roberto's work + scikit-learn + keras
+import data_feed
+import sklearn
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from keras.models import load_model
+from tqdm import tqdm
 
 import csv
 
 
-viz = False
+viz = False			# flag to display debug / visualization images
+FRAME_DIFF = True	# flag to use frame difference background subtraction
+MOG = False 		# flag to use Mixture of Gaussian background modelling
+
 
 #function used to sort list of detections by confidence
 def getKey(dt):
@@ -142,7 +152,7 @@ class BgsubTrack:
     #roiSelection : selects regions on dimension criteria to reduce the research of pedestrians in these regions
     #@param rectangles : regions that were extracted by subtracting the background
     #@param frame : input / output original image
-    #return : selected regions and their corresponding locations in the image, image with regions drawn (used for visualization)
+    #return : selected regions and their corresponding locations in the image + image with regions drawn (used for visualization)
     def roiSelection(self, rectangles, frame):
         regions = []
         boundingLocations = []
@@ -207,8 +217,9 @@ class BgsubTrack:
     #@param frame : input original image used to calculate histogram distance
     #@param nframe : number of the current frame
     #@param significantTrackers : input / output list of trackers that lasted more than 20 frames
+	#@param model : input pre-loaded model used to do the predictions
     #return : updated list of trackers, updated list of trackers that produced relevant tracks
-    def updateTrackers(self, posDetections, trackerList, frame, nframe, significantTrackers):
+    def updateTrackers(self, posDetections, trackerList, frame, nframe, significantTrackers, model):
         for i in range(len(trackerList)-1, -1, -1):
             flag = False
             for det in posDetections:
@@ -265,23 +276,17 @@ class BgsubTrack:
                     region = self.resize(region)
                     descriptors, roi = self.slidingWindow(region[0])
                     redetections = []
-
-                    with tf.Session() as sess:
-                        saver = tf.train.import_meta_graph('graph.meta')
-                        saver.restore(sess, tf.train.latest_checkpoint('./'))
-                        graph = tf.get_default_graph()
-                        x = graph.get_tensor_by_name("x:0")
-                        y = graph.get_tensor_by_name("y:0")
-                        op_to_restore = graph.get_tensor_by_name("output_op:0")
-            
-                        #tries to redetect the lost head
-                        for idxd, desc in enumerate(descriptors):
-                            desc = desc.reshape(1, desc.shape[0])
-                            feed_dict = {x:desc}
-                            regression = sess.run(op_to_restore, feed_dict)
-                            if regression[0][0] > regression[0][1]:
-                                accurateRect = (roi_x+roi[idxd][0], roi_y+roi[idxd][1], roi[idxd][2], roi[idxd][3])
-                                redetections.append(dt(accurateRect, regression[0][0]))
+					
+                    for r in roi:
+                        feed_im = np.copy(frame[roi_y+r[1]:roi_y+r[1]+r[3], roi_x+r[0]:roi_x+r[0]+r[2]])
+                        feed_im = cv2.resize(feed_im, (im_size, im_size))
+                        feed_im = np.array([feed_im])/255.
+                        prediction = model.predict(feed_im)
+				
+                        if np.argmax(prediction) == 1:
+                            accurateRect = (roi_x+r[0], roi_y+r[1], r[2], r[3])
+                            redetections.append(dt(accurateRect, prediction[0][1]))
+							
                     sorted(redetections, key=getKey, reverse=True)
                     flagNoRedetect = False
                     if len(redetections) > 0:
@@ -340,125 +345,125 @@ class BgsubTrack:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detect pedestrians on surveillance videos')
-    parser.add_argument('model_path', help='Path to .meta file containing the graph')
+    parser.add_argument('model_path', help='Path to the model hdf5 file')
     parser.add_argument('video_path', help='Path to the video to be processed')
+    parser.add_argument('output_path', help='Path to the csv file in which raw results will be written')
     args = parser.parse_args()
    
-    csv_file = open("C:\\Users\\sergio\\TF_slim_workspace\\slim\\A_d800mm_R1.csv", "w")
+    csv_file = open(args.output_path, "w")
     writer = csv.writer(csv_file)
 	
     bgsubTrack = BgsubTrack()
     cap = cv2.VideoCapture(args.video_path)
-    #svm = cv2.ml.SVM_load("/home/mathieu/STAGE/underground_dataset/results/models/openCV_model.xml")
+	
+	#load inception_V3 model
+    model = load_model(args.model_path)
+    if model is None:
+        print("Could not load the model")
+        exit(-1)
 
     trackerList = []
     significantTrackers = []
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7) #do not set gpu memory usage to 100% otherwise the program crashes
-    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-        arg_scope = inception_utils.inception_arg_scope()
-        im_size = 299
+    im_size = 224
 
-        inputs = tf.placeholder(tf.float32, (None, im_size, im_size, 3))
-        inputs_processed = inception_preprocessing.preprocess_image(tf.squeeze(inputs), im_size, im_size,3)
-        inputs_processed = tf.expand_dims(inputs_processed, 0)
+    currentFrame = np.ndarray(shape=(0,0))
+    previousFrame = np.ndarray(shape=(0,0))
+    numFrame = 0
+    while(True):
+        ret, frame = cap.read()
+        if ret==False:
+            print("Could not read next frame")
+            break
 
-        with slim.arg_scope(arg_scope):
-            logits, end_points = inception_v4.inception_v4(inputs_processed)
+        numFrame += 1
+        print("frame n°{}".format(numFrame))
+        true_detections = np.copy(frame)
+        after_nms = np.copy(frame)
+        trackingResults = np.copy(frame)
+        currentFrame = np.copy(frame)
 
-        saver = tf.train.Saver()
-        saver.restore(sess, tf.train.latest_checkpoint('../output_graph/'))
-
-        currentFrame = np.ndarray(shape=(0,0))
-        previousFrame = np.ndarray(shape=(0,0))
-        numFrame = -1
-        while(True):
-            ret, frame = cap.read()
-            if ret==False:
-                break
-
-            numFrame += 1
-            true_detections = np.copy(frame)
-            after_nms = np.copy(frame)
-            trackingResults = np.copy(frame)
-            currentFrame = np.copy(frame)
-
-            #fgmask = bgsubTrack.bgsub.apply(frame)
-            diff_mask = np.ndarray(shape=currentFrame.shape, dtype=currentFrame.dtype)
-            contours = []
+		
+        diff_mask = np.ndarray(shape=currentFrame.shape, dtype=currentFrame.dtype)
+        contours = []
+		
+        if FRAME_DIFF:
             if currentFrame.shape != (0,0) and previousFrame.shape != (0,0):
                 diff_mask = cv2.absdiff(previousFrame, currentFrame)
                 diff_mask = cv2.cvtColor(diff_mask, cv2.COLOR_BGR2GRAY)
                 ret, diff_mask = cv2.threshold(diff_mask, 30, 255, cv2.THRESH_BINARY)
                 im2, contours, hierarchy = cv2.findContours(diff_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            #ret, thresholded = cv2.threshold(fgmask, 150, 255, cv2.THRESH_BINARY)
-            #im2, contours, hierarchy = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            #im2, contours, hierarchy = cv2.findContours(diff_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+		
+        if MOG:
+            fgmask = bgsubTrack.bgsub.apply(frame)
+            ret, thresholded = cv2.threshold(fgmask, 150, 255, cv2.THRESH_BINARY)
+            im2, contours, hierarchy = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-            rectangles = []
-            for c in contours:
-                rectangles.append(cv2.boundingRect(c))
-            
-            regions, boundingLocations, frame_roi = bgsubTrack.roiSelection(rectangles, frame)
-            regions = bgsubTrack.resize(regions)
-            
-            posDetections = []
-            #extract HOG descriptors from each region
-            for idxr, region in enumerate(regions):
-                descriptors = []
-                roi = []
-                descriptors, roi = bgsubTrack.slidingWindow(region)
+        rectangles = []
+        for c in contours:
+            rectangles.append(cv2.boundingRect(c))
+		
+        regions, boundingLocations, frame_roi = bgsubTrack.roiSelection(rectangles, frame)
+        regions = bgsubTrack.resize(regions)
+		
+        posDetections = []
+		#extract HOG descriptors from each region
+        for idxr, region in enumerate(regions):
+            descriptors = []
+            roi = []
+            descriptors, roi = bgsubTrack.slidingWindow(region)
 
-                #classify extracted descriptors
-                for idxd, reg in enumerate(roi):
-                    #desc = desc.reshape(1, desc.shape[0])                   
-                    feed_im = np.copy(currentFrame[boundingLocations[idxr][1] + reg[1]:reg[3] +  boundingLocations[idxr][1] + reg[1], boundingLocations[idxr][0] + reg[0]:boundingLocations[idxr][0] + reg[0] + reg[2]])
-                    feed_im = cv2.resize(feed_im, (im_size, im_size))
-                    feed_im = np.expand_dims(np.array(feed_im), 0)
-                    logit_values = sess.run(logits, feed_dict={inputs:feed_im})
+			#classify extracted descriptors
+            for idxd, reg in enumerate(roi):
+				#desc = desc.reshape(1, desc.shape[0])                   
+                feed_im = np.copy(currentFrame[boundingLocations[idxr][1] + reg[1]:reg[3] +  boundingLocations[idxr][1] + reg[1], boundingLocations[idxr][0] + reg[0]:boundingLocations[idxr][0] + reg[0] + reg[2]])
+                feed_im = cv2.resize(feed_im, (im_size, im_size))
 					
-                    if np.argmax(logit_values)==1:
-                        #relocate accurately the window
-                        accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
-                        posDetections.append(dt(accurateRect, logit_values[0][1]))
-                        if viz:
-                            if accurateRect[0] + accurateRect[2] > frame.shape[0]:
-                                accurateRect[2] = frame.shape[0] - accurateRect[0]
-                            if accurateRect[1] + accurateRect[3] > frame.shape[1]:
-                                accurateRect[3] = frame.shape[1] - accurateRect[1]
+                feed_im = np.array([feed_im])/255.
+                prediction = model.predict(feed_im)
+				
+                if np.argmax(prediction)==1:
+					#relocate accurately the window
+                    accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
+                    posDetections.append(dt(accurateRect, prediction[0][1]))
+                    if viz:
+                        if accurateRect[0] + accurateRect[2] > frame.shape[0]:
+                            accurateRect[2] = frame.shape[0] - accurateRect[0]
+                        if accurateRect[1] + accurateRect[3] > frame.shape[1]:
+                            accurateRect[3] = frame.shape[1] - accurateRect[1]
 
-                            cv2.rectangle(true_detections, (accurateRect[0], accurateRect[1]), (accurateRect[0]+accurateRect[2], accurateRect[1]+accurateRect[3]), (0, 0, 255));
-                        #Ouput detections results (CSV format)
-                        writer.writerow([numFrame, "1", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3]])
-                    else:
-                        accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
-                        writer.writerow([numFrame, "0", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3]])
+                        cv2.rectangle(true_detections, (accurateRect[0], accurateRect[1]), (accurateRect[0]+accurateRect[2], accurateRect[1]+accurateRect[3]), (0, 0, 255));
+					#Ouput detections results (CSV format)
+                    writer.writerow([numFrame, "1", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][1]])
+                else:
+                    accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
+                    writer.writerow([numFrame, "0", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][0]])
 
-            #if viz:
-            #    cv2.imshow("true_detections", true_detections)
+		#if viz:
+		#    cv2.imshow("true_detections", true_detections)
 
-            #sorted(posDetections, key=getKey, reverse=True)
-            #posDetections = bgsubTrack.nms(posDetections)
-            
-            #trackerList, significantTrackers = bgsubTrack.updateTrackers(posDetections, trackerList, frame, numFrame, significantTrackers)
-            #trackerList = bgsubTrack.addNewTrackers(posDetections, trackerList, frame, numFrame)
+        sorted(posDetections, key=getKey, reverse=True)
+        posDetections = bgsubTrack.nms(posDetections)
+		
+        trackerList, significantTrackers = bgsubTrack.updateTrackers(posDetections, trackerList, frame, numFrame, significantTrackers, model)
+        trackerList = bgsubTrack.addNewTrackers(posDetections, trackerList, frame, numFrame)
 
-            previousFrame = np.copy(currentFrame)
-            
-            if viz:
-                #cv2.imshow("foreground", fgmask)
-                #cv2.imshow("thresholded", thresholded)
-                #cv2.imshow("opened", opened)
-                cv2.imshow("frame diff", diff_mask)
-                cv2.imshow("rectangles", frame_roi)
-                for detection in posDetections : 
-                    cv2.rectangle(after_nms, (detection.bbox[0], detection.bbox[1]), (detection.bbox[0]+detection.bbox[2], detection.bbox[1]+detection.bbox[3]), (0, 0, 255))
-                cv2.imshow("after_nms", after_nms)
-                
-                for tracker in trackerList:
-                    cv2.rectangle(trackingResults, (tracker.bbox[0], tracker.bbox[1]), (tracker.bbox[0]+tracker.bbox[2], tracker.bbox[1]+tracker.bbox[3]), (0, 0, 255))
-                cv2.imshow("trackers", trackingResults)
-                
-                cv2.waitKey(30)
+        previousFrame = np.copy(currentFrame)
+		
+        if viz:
+			#cv2.imshow("foreground", fgmask)
+			#cv2.imshow("thresholded", thresholded)
+			#cv2.imshow("opened", opened)
+            cv2.imshow("frame diff", diff_mask)
+            cv2.imshow("rectangles", frame_roi)
+            for detection in posDetections : 
+                cv2.rectangle(after_nms, (detection.bbox[0], detection.bbox[1]), (detection.bbox[0]+detection.bbox[2], detection.bbox[1]+detection.bbox[3]), (0, 0, 255))
+            cv2.imshow("after_nms", after_nms)
+			
+            for tracker in trackerList:
+                cv2.rectangle(trackingResults, (tracker.bbox[0], tracker.bbox[1]), (tracker.bbox[0]+tracker.bbox[2], tracker.bbox[1]+tracker.bbox[3]), (0, 0, 255))
+            cv2.imshow("trackers", trackingResults)
+			
+            cv2.waitKey(30)
 
         
     
