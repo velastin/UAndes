@@ -23,6 +23,8 @@
 #define TRK_RES 1 // uncomment it to output tracking results
 //#define DET_RES 1 // uncomment it to output detection results
 //#define NMS_RES 1   // uncomment it to output detections results after NMS
+//#define MOG 1		// flag to use MOG background modelling
+#define FRAME_DIFF 1 	// flag to use frame difference background subtraction
 
 using namespace std;
 using namespace cv;
@@ -425,7 +427,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
                         if((*trackerList)[i].locations.size() > 20)
                             significantTrackers->push_back((*trackerList)[i]);
                         trackerList->erase(trackerList->begin() +i);
-                        //cout << "erase tracker" << to_string(i) << endl;
                     }
                 }
 
@@ -437,7 +438,6 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
                         if((*trackerList)[i].locations.size() > 20)
                             significantTrackers->push_back((*trackerList)[i]);
                         trackerList->erase(trackerList->begin() +i);
-                        //cout << "erase tracker" << to_string(i) << endl;
                     }
                 }
             }
@@ -451,13 +451,10 @@ void BgsubTrack::updateTrackers(const vector<dt> & posDetections, vector<kcf> * 
                     if((*trackerList)[i].locations.size() > 20)
                         significantTrackers->push_back((*trackerList)[i]);
                     trackerList->erase(trackerList->begin() +i);
-                    //cout << "erase tracker" << to_string(i) << endl;
                 }
             }
         }
-        //waitKey(-1);
     }
-    //cout << endl;
 }
 
 double BgsubTrack::getHistDistance(const Mat & roi, Mat * b_hist, Mat * g_hist, Mat * r_hist, vector<Mat> histogram)
@@ -512,7 +509,7 @@ int main( int argc, char** argv )
     }
 
     Mat currentFrame, previousFrame;
-    int nbFrame = 0;
+    int nbFrame = 1;
     // iterates until the last frame of the video
     while(1)
     {
@@ -526,25 +523,32 @@ int main( int argc, char** argv )
 
         //Applies background subtraction for the current frame and update weights of each pixel
         Mat diff_mask;
-	//bst.bgsub->apply(frame, diff_mask); // BOSS dataset : add learning rate 0.001
+#ifdef MOG
+	bst.bgsub->apply(frame, diff_mask); // BOSS dataset : add learning rate 0.001
+#endif
+#ifdef FRAME_DIFF
         if(currentFrame.size() != Size(0,0) && previousFrame.size() != Size(0,0))
         {
             absdiff(previousFrame, currentFrame, diff_mask);
             cvtColor(diff_mask, diff_mask, COLOR_BGR2GRAY);
             threshold(diff_mask, diff_mask, 30, 255, CV_THRESH_BINARY);
         }
-
+#endif
         //Mat thresholded;
         vector<vector<Point> > contours;
         vector<cv::Vec4i> hierarchy;
 
         // binarizes image to extract contours
-        //Mat opened, thresholded;
-        //threshold(diff_mask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
+#ifdef MOG
+        Mat opened, thresholded;
+        threshold(diff_mask, thresholded, 150, 255, CV_THRESH_BINARY); // BOSS dataset 90 / subway 150
         //Applies opening on the binarized image to remove small artefacts and to try to split regions that should not be linked (shadows etc)
-        //morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
-        //findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+        morphologyEx(thresholded, opened, MORPH_OPEN, getStructuringElement(MORPH_CROSS, Size(5, 5))); // (9,9) BOSS dataset
+        findContours(opened, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+#endif
+#ifdef FRAME_DIFF
         findContours(diff_mask, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+#endif
 
         Mat contoursImg = Mat::zeros(frame.size(), CV_8UC1);
         vector<RotatedRect> rectangles;

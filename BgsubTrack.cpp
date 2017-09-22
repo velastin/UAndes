@@ -90,7 +90,7 @@ void BgsubTrack::addNewTrackers(const vector<dt> & posDetections, vector<colorHi
 
 void BgsubTrack::nms(vector<dt> * posDetections)
 {
-    //iterates from starting from the end of the vector since we will delete some elements
+    //iterates starting from the end of the vector since we will delete some elements
     for(int i=posDetections->size()-1; i >= 0; i--)
     {
         //gets the lowest confidence detection's top left and bottom right corners coordinates
@@ -104,12 +104,12 @@ void BgsubTrack::nms(vector<dt> * posDetections)
         {
             if(i == j)
                 break;
-
-            /*if((*posDetections)[i].confidence > -0.015)
+            // checks distance to the hyperplane used as a confidence measure
+            if((*posDetections)[i].confidence > -0.015)
             {
                 posDetections->erase(posDetections->begin() +i);
                 break;
-            }*/
+            }
             //gets the highest confidence detection's top left and bottom right corners coordinates
             int x2_tl = (*posDetections)[j].boundingBox.x;
             int y2_tl = (*posDetections)[j].boundingBox.y;
@@ -621,7 +621,7 @@ int main( int argc, char** argv )
     // background subtraction
     Mat frame, fgmask;
     Ptr<BackgroundSubtractor> gaussMix = createBackgroundSubtractorMOG2();
-    int nbFrame = 0;
+    int nbFrame = 1;
     Mat currentFrame, previousFrame;
 
     //SVM + HOG
