@@ -31,6 +31,9 @@ import csv
 viz = False			# flag to display debug / visualization images
 FRAME_DIFF = True	# flag to use frame difference background subtraction
 MOG = False 		# flag to use Mixture of Gaussian background modelling
+DET_RES = True		# flag to output raw detection results
+NMS_RES = True 		# flag to output raw detection results after NMS
+TRACK_RES = True	# flag to output raw tracking results
 
 
 #function used to sort list of detections by confidence
@@ -90,13 +93,16 @@ class BgsubTrack:
     #@param scaleFactor : downscale factor in percent
     #return : list of descriptors and list of locations in the image
     def slidingWindow(self, image, multiscale=False, scaleFactor=0.0):
+        if image is None:
+            print("One of the image dimension is 0")
+            return [], []
         if image.shape[1] %self.hog.blockStride[0] != 0 or image.shape[0] %self.hog.blockStride[1] != 0:
             print("Image size must be a multiple of block stride")
-            exit()
+            return [], []
 
         if image.shape[1] < self.hog.winSize[1] or image.shape[0] < self.hog.winSize[0]:
             print("Image is smaller than detection window")
-            exit()
+            return [], []
 
         descriptors = []
         descriptor = []
@@ -136,16 +142,18 @@ class BgsubTrack:
     #return : correctly shaped regions
     def resize(self, regions):
         for idx, region in enumerate(regions):
+            if region.shape[0] ==0 or region.shape[1] == 0:
+                regions[idx]=None
+                continue
             if region.shape[0] %self.hog.blockStride[1] != 0 or region.shape[1] % self.hog.blockStride[0] != 0:
                 region=cv2.resize(region, (region.shape[1] + self.hog.blockStride[0] - region.shape[1] % self.hog.blockStride[0], 
                                     region.shape[0] + self.hog.blockStride[1] - region.shape[0] % self.hog.blockStride[1]))
 
             if region.shape[0] < self.hog.winSize[1]:
-                print("region shape = ", region.shape)
                 region=cv2.resize(region, (region.shape[1], self.hog.winSize[1]))
             if region.shape[1] < self.hog.winSize[0]:   
                 region = cv2.resize(region, (self.hog.winSize[0], region.shape[0]))
-
+				
             regions[idx] = region
         return regions
 
@@ -156,11 +164,12 @@ class BgsubTrack:
     def roiSelection(self, rectangles, frame):
         regions = []
         boundingLocations = []
+        original_frame = np.copy(frame)
         for bRect in rectangles:
             if bRect[2] * bRect[3] > 750 and bRect[2] * bRect[3] < 6000:
                 if bRect[0] < 30 or bRect[1] < 30 or bRect[0] > frame.shape[0] - bRect[2] - 60 or bRect[1] > frame.shape[1] - bRect[3] -60: 
                     continue
-                regions.append(np.copy(frame[bRect[1]-30:bRect[1]+ bRect[3]+60, bRect[0]-30:bRect[0]+bRect[2]+60]))
+                regions.append(np.copy(original_frame[bRect[1]-30:bRect[1]+ bRect[3]+60, bRect[0]-30:bRect[0]+bRect[2]+60]))
                 boundingLocations.append((bRect[0]-30, bRect[1]-30, bRect[2]+60, bRect[3]+60))
                 cv2.rectangle(frame, (bRect[0]-30, bRect[1]-30), (bRect[0]+bRect[2]+60, bRect[1]+bRect[3]+60), (0,0,255), 1)
                     
@@ -252,7 +261,7 @@ class BgsubTrack:
                 if len(trackerList[i].locations) >= 2:
                     #estimates the new location of the pedestrian (we assume that the speed is linear and the direction remains the same between 2 frames)
                     dx = trackerList[i].locations[-1][0] - trackerList[i].locations[-2][0]
-                    dy = trackerList[i].locations[-1][1] - trackerList[i].locations[-2][0]
+                    dy = trackerList[i].locations[-1][1] - trackerList[i].locations[-2][1]
                     predict_x = trackerList[i].locations[-1][0] + dx
                     predict_y = trackerList[i].locations[-1][1] + dy
                     roi_x = predict_x-20
@@ -273,6 +282,7 @@ class BgsubTrack:
                     #should contain only one region but resize function is designed to iterate over a list
                     region = []
                     region.append(np.copy(frame[roi_y:roi_y+height, roi_x:roi_x+width]))
+					
                     region = self.resize(region)
                     descriptors, roi = self.slidingWindow(region[0])
                     redetections = []
@@ -284,7 +294,11 @@ class BgsubTrack:
                         prediction = model.predict(feed_im)
 				
                         if np.argmax(prediction) == 1:
-                            accurateRect = (roi_x+r[0], roi_y+r[1], r[2], r[3])
+                            accurateRect = []
+                            accurateRect.append(roi_x+r[0])
+                            accurateRect.append(roi_y+r[1])
+                            accurateRect.append(r[2])
+                            accurateRect.append(r[3])
                             redetections.append(dt(accurateRect, prediction[0][1]))
 							
                     sorted(redetections, key=getKey, reverse=True)
@@ -347,11 +361,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Detect pedestrians on surveillance videos')
     parser.add_argument('model_path', help='Path to the model hdf5 file')
     parser.add_argument('video_path', help='Path to the video to be processed')
-    parser.add_argument('output_path', help='Path to the csv file in which raw results will be written')
+    parser.add_argument('detection_path', help='Path to the csv file in which raw detection results will be written')
+    parser.add_argument('NMS_path', help='Path to the csv file in which raw after NMS results will be written')
+    parser.add_argument('tracking_path', help='Path to the csv file in which raw tracking detection results will be written')
     args = parser.parse_args()
    
-    csv_file = open(args.output_path, "w")
-    writer = csv.writer(csv_file)
+ 
+    csv_file = csv_nms_file = csv_tracking_file = ""
+    writer = writer_nms = writer_tracking = ""
+	
+    if DET_RES:
+        csv_file = open(args.detection_path, "w")
+        writer = csv.writer(csv_file)
+	
+    if NMS_RES:
+        csv_nms_file = open(args.NMS_path, "w")
+        writer_nms = csv.writer(csv_nms_file)
+	
+    if TRACK_RES:
+        csv_tracking_file = open(args.tracking_path, "w")
+        writer_tracking = csv.writer(csv_tracking_file)
 	
     bgsubTrack = BgsubTrack()
     cap = cv2.VideoCapture(args.video_path)
@@ -372,7 +401,6 @@ if __name__ == '__main__':
     while(True):
         ret, frame = cap.read()
         if ret==False:
-            print("Could not read next frame")
             break
 
         numFrame += 1
@@ -423,7 +451,11 @@ if __name__ == '__main__':
 				
                 if np.argmax(prediction)==1:
 					#relocate accurately the window
-                    accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
+                    accurateRect = []
+                    accurateRect.append(boundingLocations[idxr][0]+roi[idxd][0])
+                    accurateRect.append(boundingLocations[idxr][1]+roi[idxd][1])
+                    accurateRect.append(roi[idxd][2])
+                    accurateRect.append(roi[idxd][3])
                     posDetections.append(dt(accurateRect, prediction[0][1]))
                     if viz:
                         if accurateRect[0] + accurateRect[2] > frame.shape[0]:
@@ -433,16 +465,28 @@ if __name__ == '__main__':
 
                         cv2.rectangle(true_detections, (accurateRect[0], accurateRect[1]), (accurateRect[0]+accurateRect[2], accurateRect[1]+accurateRect[3]), (0, 0, 255));
 					#Ouput detections results (CSV format)
-                    writer.writerow([numFrame, "1", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][1]])
+                    if DET_RES:
+                        writer.writerow([numFrame, "1", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][1]])
                 else:
-                    accurateRect = (boundingLocations[idxr][0]+roi[idxd][0], boundingLocations[idxr][1]+roi[idxd][1], roi[idxd][2], roi[idxd][3])
-                    writer.writerow([numFrame, "0", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][0]])
+                    accurateRect = []
+                    accurateRect.append(boundingLocations[idxr][0]+roi[idxd][0])
+                    accurateRect.append(boundingLocations[idxr][1]+roi[idxd][1])
+                    accurateRect.append(roi[idxd][2])
+                    accurateRect.append(roi[idxd][3])
+                    if DET_RES:
+                        writer.writerow([numFrame, "0", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][0]])
 
 		#if viz:
 		#    cv2.imshow("true_detections", true_detections)
 
         sorted(posDetections, key=getKey, reverse=True)
+        for p in posDetections:
+            print("confidence = ", p.confidence)
         posDetections = bgsubTrack.nms(posDetections)
+		
+        if NMS_RES:
+            for d in posDetections :
+                writer_nms.writerow([numFrame, "1", d.bbox[0], d.bbox[1], d.bbox[2], d.bbox[3], d.confidence])
 		
         trackerList, significantTrackers = bgsubTrack.updateTrackers(posDetections, trackerList, frame, numFrame, significantTrackers, model)
         trackerList = bgsubTrack.addNewTrackers(posDetections, trackerList, frame, numFrame)
@@ -464,6 +508,15 @@ if __name__ == '__main__':
             cv2.imshow("trackers", trackingResults)
 			
             cv2.waitKey(30)
+		
+    if TRACK_RES:
+	    for idx, t in enumerate(significantTrackers):
+	        for idx2, nf in enumerate(t.numFrame):
+		        writer_tracking.writerow(["head"+str(idx), nf, t.locations[idx2][0]+(t.locations[idx2][2]/2), t.locations[idx2][1] + (t.locations[idx2][3] / 2)])
+			
+    csv_file.close()
+    csv_nms_file.close()
+    csv_tracking_file.close()
 
         
     
