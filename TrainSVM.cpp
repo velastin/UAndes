@@ -3,7 +3,7 @@
 using namespace cv;
 using namespace std;
 
-#define HARD_TRAINING 1
+//#define HARD_TRAINING 1
 
 TrainSVM::TrainSVM(const float & C, const Size & winSize, const Size & blockSize, const Size & blockStride, const Size & cellSize, int nBins)
 {
@@ -129,7 +129,7 @@ void TrainSVM::describe(vector<string> * posFileNames, vector<string> * negFileN
 
         this->hog.compute(image, dsc);
         descriptors->push_back(dsc);
-        labels->push_back(0);
+        labels->push_back(-1);
     }
 
     cout << "Processed all negative descriptors" << endl;
@@ -145,11 +145,10 @@ void TrainSVM::fit(vector<vector<float> > * descriptors, vector<int> * labels, c
 
     for(int i=0; i < descriptors-> size(); i++)
     {
-        lb.at<float>(i, 0) = (*labels)[i];
+        lb.at<int>(i, 0) = (*labels)[i];
         for(int j=0; j < (*descriptors)[i].size(); j++)
             trainingData.at<float>(i, j) = (*descriptors)[i][j];
     }
-
     cout << "Training classifier ..." << endl;
     this->svm->train(trainingData, ml::ROW_SAMPLE, lb);
     this->svm->save(outPath);
@@ -169,17 +168,17 @@ void TrainSVM::testModel(vector<string> * posTestFileNames, vector<string> * neg
     for(int i=0; i < descriptors->size(); i++)
     {
         int prediction = model->predict((*descriptors)[i]);
-        if(prediction!=0 && (*labels)[i]==1)
+        if(prediction==1 && (*labels)[i]==1)
             true_positives++;
-        if(prediction!=0 && (*labels)[i]==0)
+        if(prediction==1 && (*labels)[i]==-1)
         {
             false_positives++;
             hardLabels->push_back(0);
             hardDescriptors->push_back((*descriptors)[i]);
         }
-        if(prediction==0 && (*labels)[i]==0)
+        if(prediction==-1 && (*labels)[i]==-1)
             true_negatives++;
-        if(prediction==0 && (*labels)[i]== 1)
+        if(prediction==-1 && (*labels)[i]== 1)
         {
             false_negatives++;
             hardLabels->push_back(1);
