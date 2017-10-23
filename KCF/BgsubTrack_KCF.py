@@ -54,7 +54,7 @@ class kcf:
 		self.bbox = bb
 		self.numFrame.append(nf)
 		self.locations.append(bb)
-		self.tracker = cv2.TrackerKCF_create()
+		self.tracker = cv2.Tracker_create("KCF")
 		self.tracker.init(frame, bb)
 
         
@@ -217,7 +217,6 @@ class BgsubTrack:
 
                 if overlap_area / float(total_area) > 0.5:
                     #updates the tracker from measurement
-                    if distance==0 or (len(trackerList[i].distances)>=1 and trackerList[i].distances[-1]==0) or distance <= 1.5*mean_distance or len(trackerList[i].distances)==0:
                         trackerList[i].bbox = det.bbox
                         trackerList[i].locations.append(det.bbox)
                         trackerList[i].numFrame.append(nframe)
@@ -278,12 +277,11 @@ class BgsubTrack:
                             redetections[0].bbox[3] = frame.shape[1]-redetections[0].bbox[1]
 
                         #updates from redetection
-                        if distance==0 or trackerList[i].distances[-1]==0 or distance <= 1.5*mean_distance:
-                            trackerList[i].bbox = redetections[0].bbox
-                            trackerList[i].locations.append(redetections[0].bbox)
-                            trackerList[i].numFrame.append(nframe)
-                            trackerList[i].noMeasureCount = 0
-                            flag = True
+                        trackerList[i].bbox = redetections[0].bbox
+                        trackerList[i].locations.append(redetections[0].bbox)
+                        trackerList[i].numFrame.append(nframe)
+                        trackerList[i].noMeasureCount = 0
+                        flag = True
                     
                     #if we could not redetect the head then the target is lost for this frame
                     else:
@@ -445,7 +443,7 @@ if __name__ == '__main__':
                 writer_nms.writerow([numFrame, "1", d.bbox[0], d.bbox[1], d.bbox[2], d.bbox[3], d.confidence])
 				
         for t in trackerList:
-            t.tracker.update(frame, bbox)
+            ok, bbox = t.tracker.update(frame)
             if bbox[2] !=0 and bbox[3] !=0:
                 t.bbox = bbox
 		
