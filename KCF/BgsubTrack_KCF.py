@@ -29,8 +29,8 @@ import csv
 
 
 viz = False			# flag to display debug / visualization images
-FRAME_DIFF = True	# flag to use frame difference background subtraction
-MOG = False 			# flag to use Mixture of Gaussian background modelling
+FRAME_DIFF = False	# flag to use frame difference background subtraction
+MOG = True 			# flag to use Mixture of Gaussian background modelling
 DET_RES = True		# flag to output raw detection results
 NMS_RES = True 		# flag to output raw detection results after NMS
 TRACK_RES = True	# flag to output raw tracking results
@@ -399,7 +399,7 @@ if __name__ == '__main__':
 			#classify extracted descriptors
             for idxd, reg in enumerate(roi):
 				#desc = desc.reshape(1, desc.shape[0])                   
-                feed_im = np.copy(currentFrame[ reg[1]:reg[3] + reg[1],  reg[0]: reg[0] + reg[2]])
+                feed_im = np.copy(currentFrame[boundingLocations[idxr][1]+ reg[1]:reg[3] + boundingLocations[idxr][1] + reg[1],  boundingLocations[idxr][0] + reg[0]: boundingLocations[idxr][0] + reg[0] + reg[2]])
                 feed_im = cv2.resize(feed_im, (im_size, im_size))
 					
                 feed_im = np.array([feed_im])/255.
@@ -408,8 +408,8 @@ if __name__ == '__main__':
                 if np.argmax(prediction)==1:
 					#relocate accurately the window
                     accurateRect = []
-                    accurateRect.append(roi[idxd][0])
-                    accurateRect.append(roi[idxd][1])
+                    accurateRect.append(boundingLocations[idxr][0] + roi[idxd][0])
+                    accurateRect.append(boundingLocations[idxr][1] + roi[idxd][1])
                     accurateRect.append(roi[idxd][2])
                     accurateRect.append(roi[idxd][3])
                     posDetections.append(dt(accurateRect, prediction[0][1]))
@@ -425,8 +425,8 @@ if __name__ == '__main__':
                         writer.writerow([numFrame, "1", accurateRect[0], accurateRect[1], accurateRect[2], accurateRect[3], prediction[0][1]])
                 else:
                     accurateRect = []
-                    accurateRect.append(roi[idxd][0])
-                    accurateRect.append(roi[idxd][1])
+                    accurateRect.append(boundingLocations[idxr][0] + roi[idxd][0])
+                    accurateRect.append(boundingLocations[idxr][1] + roi[idxd][1])
                     accurateRect.append(roi[idxd][2])
                     accurateRect.append(roi[idxd][3])
                     if DET_RES:
